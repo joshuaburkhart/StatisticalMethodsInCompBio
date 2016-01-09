@@ -1,0 +1,22 @@
+---
+title: "StatMethodsHW1"
+author: "Joshua Burkhart"
+date: "January 8, 2016"
+output: pdf_document
+---
+
+1. Develop an annotated R script that utilizes key exploratory data analysis techniques to identify if there are any issues in the data or potential problems for analysis.
+
+> Missing data?
+> Ranges?
+> Distributions?
+> Rank deficient/singular?
+> Shannon Information/entropy?
+> Principal Component Analysis?
+
+2. Provide any key output (figures or tables).
+
+3. Briefly summarize any issues with the data, how you have addressed them (transforms etc) and your recommendations for further downstream analysis. Do you have any concerns about using the attribute data to predict class outcome (key here is to translated biological question->hypothesis->statistical test)?
+
+
+
