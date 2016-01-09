@@ -5,12 +5,89 @@ date: "January 8, 2016"
 output: pdf_document
 ---
 
+```{r global_options, echo=FALSE, include=FALSE, error=FALSE}
+knitr::opts_chunk$set(fig.path = "Figs/",
+                      message = FALSE,
+                      warning = FALSE,
+                      include = TRUE,
+                      echo = TRUE,
+                      error = TRUE,
+                      fig.width = 11,
+                      comment = NA)
+```
+
+```{r, echo=FALSE, include=FALSE}
+library(MASS)
+library(plyr) #this must be loaded before dplyr 
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(knitr)
+library(magrittr)
+library(reshape2)
+```
+
 1. Develop an annotated R script that utilizes key exploratory data analysis techniques to identify if there are any issues in the data or potential problems for analysis.
 
+> Load data
+
+```{r}
+data <- read.csv("~/SoftwareProjects/StatisticalMethodsInCompBio/HW1/hw1data.txt",sep="")
+
+#copy to matrix before adding column names
+data_matrix <- as.matrix(data)
+
+# add column names to data frame
+names(data) <- c(
+  "numPreg",    #Number of pregnancies
+  "glucTol",    #Glucose tolerance (Plasma glucose concentration @ 2 hrs)
+  "diasBldPrs", #Diastolic blood pressure (mm Hg)
+  "bdyFat",     #Body Fat: Triceps skin fold thickness (mm)
+  "insln",      #Insulin: 2-Hour serum insulin (mu U/ml)
+  "bmi",        #Body mass index (weight in kg/(height in m)^2)
+  "expGenInf",  #Expected Genetic Influence of affected and unaffected relatives on subject's eventual risk
+  "age",        #Age (years)
+  "tstPosDbts") #Class variable (0 or 1) where 1 is interpreted as "tested positive for diabetes"
+```
+
+> Columns/Rows same size?
+
+```{r}
+for (i in 0:ncol(data)) {
+    print(nrow(data[i]))
+}
+```
+
 > Missing data?
+
+```{r}
+sapply(data, function(x) sum(is.na(x))) #from http://stackoverflow.com/questions/8317231/elegant-way-to-report-missing-values-in-a-data-frame
+```
+
 > Ranges?
+
+```{r}
+for (i in 1:ncol(data)) {
+    print(max(data[i]) - min(data[1]))
+} #Ranges differ too widely. Data should be transformed
+  #onto singular range (say 0 to 1) to avoid delayed convergence of
+  #gradient decent or similar convex optimization algorithms.
+```
+
 > Distributions?
+
+```{r}
+melt(data) %>% ggplot(aes(x=variable,y=value)) +
+  geom_boxplot() #from http://stackoverflow.com/questions/15071334/boxplot-of-table-using-ggplot2
+```
+
 > Rank deficient/singular?
+
+```{r}
+data_inv <- ginv(data_matrix)
+zapsmall(data_inv %*% data_matrix)
+```
+
 > Shannon Information/entropy?
 > Principal Component Analysis?
 
