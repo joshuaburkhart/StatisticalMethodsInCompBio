@@ -2,8 +2,14 @@
 title: "StatMethodsHW1"
 author: "Joshua Burkhart"
 date: "January 8, 2016"
-output: pdf_document
+output: 
+  pdf_document: 
+    fig_width: 9
+    fig_height: 6
+    latex_engine: xelatex
 ---
+
+#BMI 651: HW1
 
 ```{r global_options, echo=FALSE, include=FALSE, error=FALSE}
 knitr::opts_chunk$set(fig.path = "Figs/",
@@ -26,17 +32,22 @@ library(knitr)
 library(magrittr)
 library(reshape2)
 library(infotheo)
+library(stats)
+library(ggbiplot)
 ```
 
-1. Develop an annotated R script that utilizes key exploratory data analysis techniques to identify if there are any issues in the data or potential problems for analysis.
+##1. Develop an annotated R script that utilizes key exploratory data analysis techniques to identify if there are any issues in the data or potential problems for analysis.
 
-> Load data
+> See the source .Rmd document.
+
+##2. Provide any key output (figures or tables).
+
+> See below output.
+
+### Load data
 
 ```{r}
 data <- read.csv("~/SoftwareProjects/StatisticalMethodsInCompBio/HW1/hw1data.txt",sep="")
-
-#copy to matrix before adding column names
-data_matrix <- as.matrix(data)
 
 # add column names to data frame
 names(data) <- c(
@@ -46,12 +57,29 @@ names(data) <- c(
   "bdyFat",     #Body Fat: Triceps skin fold thickness (mm)
   "insln",      #Insulin: 2-Hour serum insulin (mu U/ml)
   "bmi",        #Body mass index (weight in kg/(height in m)^2)
-  "expGenInf",  #Expected Genetic Influence of affected and unaffected relatives on subject's eventual risk
+  "expGenInf",  #Expected Genetic Influence of affected and unaffected relatives
+                #on subject's eventual risk
   "age",        #Age (years)
-  "tstPosDbts") #Class variable (0 or 1) where 1 is interpreted as "tested positive for diabetes"
+  "tstPosDbts") #Class variable (0 or 1) where 1 is interpreted as "tested positive
+                #for diabetes"
+
+#copy to matrix
+data_matrix <- as.matrix(data)
 ```
 
-> Columns/Rows same size?
+### Data types?
+
+```{r}
+str(data)
+```
+
+> tstPosDbts is listed as an int. We should change it to a factor to prevent accidental rescaling/etc.
+
+```{r}
+data$tstPosDbts <- as.factor(data$tstPosDbts)
+```
+
+### Columns same size?
 
 ```{r}
 for (i in 0:ncol(data)) {
@@ -59,53 +87,109 @@ for (i in 0:ncol(data)) {
 }
 ```
 
-> Missing data?
+### Missing data?
 
 ```{r}
-sapply(data, function(x) sum(is.na(x))) #from http://stackoverflow.com/questions/8317231/elegant-way-to-report-missing-values-in-a-data-frame
+sapply(data, function(x) sum(is.na(x))) #[1]
 ```
 
-> Ranges?
+### Ranges?
 
 ```{r}
-for (i in 1:ncol(data)) {
+for (i in 1:8) {
     print(max(data[i]) - min(data[1]))
-} #Ranges differ too widely. Data should be transformed
-  #onto singular range (say 0 to 1) to avoid delayed convergence of
-  #gradient decent or similar convex optimization algorithms.
+}
 ```
 
-> Distributions?
+> Ranges differ too widely. Data should be transformed onto singular scale to avoid delayed convergence of gradient descent or similar convex optimization algorithms.
+
+```{r}
+for (i in 1:8) {
+    data[i] <- rescale(data[i], to = c(0,1), from = range(data[i]))
+    print(max(data[i]) - min(data[1]))
+}
+```
+
+### Distributions?
 
 ```{r}
 melt(data) %>% ggplot(aes(x=variable,y=value)) +
-  geom_boxplot() #from http://stackoverflow.com/questions/15071334/boxplot-of-table-using-ggplot2
+  geom_boxplot() #[2]
 ```
 
-> Rank deficient/singular?
+> Distributions vary widely. We should recenter our data prior to further analysis.
+
+```{r}
+for (i in 1:8) {
+    data[i] <- scale(data[i], center=TRUE, scale=FALSE)
+}
+melt(data) %>% ggplot(aes(x=variable,y=value)) +
+  geom_boxplot() #[2]
+```
+
+### Rank deficient/singular?
 
 ```{r}
 data_inv <- ginv(data_matrix)
 zapsmall(data_inv %*% data_matrix)
 ```
 
-> Mutual Information?
+### Mutual Information?
 
 ```{r}
-maxInfPos <- mutinformation(data[9],data[9])
+maxInfPos <- mutinformation(discretize(data[9]),discretize(data[9]))
 for (i in 1:ncol(data)) {
-    print(mutinformation(discretize(data[i]),data[9])/maxInfPos)
-} #Column 2, Glucose tolerance (Plasma glucose concentration @ 2 hrs),
-  #appears to be the best individual predictor and column 3, Diastolic
-  #blood pressure (mm Hg), appears to be the worst. This may be useful
-  #in narrowing features later on.
+    print(
+      sprintf("%s: %f",
+              names(data)[i],
+              mutinformation(discretize(data[i]),discretize(data[9]))/maxInfPos))
+}
 ```
 
-> Principal Component Analysis?
+> Column 2, Glucose tolerance (Plasma glucose concentration @ 2 hrs), appears to be the best individual predictor and column 3, Diastolic blood pressure (mm Hg), appears to be the worst. This may be useful in narrowing features later on.
 
-2. Provide any key output (figures or tables).
+### Principal Component Analysis?
 
-3. Briefly summarize any issues with the data, how you have addressed them (transforms etc) and your recommendations for further downstream analysis. Do you have any concerns about using the attribute data to predict class outcome (key here is to translated biological question->hypothesis->statistical test)?
+```{r}
+#[3]
 
+log_features <- log(data_matrix[,1:8])
+log_features[is.infinite(log_features)] <- -99999
+data_matrix[,9][data_matrix[,9] == 0] <- "FALSE"
+data_matrix[,9][data_matrix[,9] == 1] <- "TRUE"
 
+class <- as.factor(data_matrix[,9])
+data_pc <- prcomp(log_features,center=TRUE,scale. = TRUE)
+print(data_pc)
+summary(data_pc)
+plot(data_pc,type="l") 
+```
 
+> From the summary() printout above, we see that 97.07% of the variance is explained with the first 5 PC's.
+
+```{r}
+ggbiplot(data_pc, choices = 1:2, obs.scale = 1, var.scale = 1, 
+              groups = class, ellipse = TRUE, 
+              circle = TRUE) +
+  scale_color_discrete(name = "tstPosDbts") +
+  theme(legend.direction = 'horizontal', 
+               legend.position = 'top')
+```
+
+> The above plot is a visualization of the first two principal components.
+
+##3. Briefly summarize any issues with the data, how you have addressed them (transforms etc) and your recommendations for further downstream analysis. Do you have any concerns about using the attribute data to predict class outcome (key here is to translated biological question->hypothesis->statistical test)?
+
+###Technical Assessment
+
+> The glaring issues with this data are the differing ranges, distributions, and amounts of mutual information among the features. Mutual information between the test result, tstPosDbts, and the features: glucTol, bmi, and age are the highest, indicating a simple risk classifier may be built using only these three features. Following a log transform, recentering, and rescaling, 5 principal components (PC's) are shown to account for over 97% of the variability in the data. These 5 PC's could then be fed into a more sophisticated learning algorithm such as an Artificial Neural Network (ANN) or a Support Vector Machine (SVM).
+
+###Discussion
+
+> The biological question, "How can we predict diabetes with the provided features?", can be considered as more than one technical question thus, a single best data transformation is not possible. On the one hand, if our goal is to design a system by which clinicians can memorize a system to quickly assess the diabetes risk of a patient based on a few factors, perhaps a simple classifier, based on only one to three features would be desired. Those features would be the ones with the most mutual information: glucTol, bmi, and age. If, on the other hand, we wanted to train a machine learning algorithm to best predict diabetes likelyhood, we should use the PC's (produced above in the data_pc object) to train a classifier. We can likely get away with using only the first five PC's, as they account for most of the variance in the data.
+
+###References
+
+> [1] http://stackoverflow.com/questions/8317231/elegant-way-to-report-missing-values-in-a-data-frame  
+> [2] http://stackoverflow.com/questions/15071334/boxplot-of-table-using-ggplot2  
+> [3] http://www.r-bloggers.com/computing-and-visualizing-pca-in-r/  
