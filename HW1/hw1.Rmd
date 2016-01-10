@@ -25,6 +25,7 @@ library(broom)
 library(knitr)
 library(magrittr)
 library(reshape2)
+library(infotheo)
 ```
 
 1. Develop an annotated R script that utilizes key exploratory data analysis techniques to identify if there are any issues in the data or potential problems for analysis.
@@ -88,7 +89,18 @@ data_inv <- ginv(data_matrix)
 zapsmall(data_inv %*% data_matrix)
 ```
 
-> Shannon Information/entropy?
+> Mutual Information?
+
+```{r}
+maxInfPos <- mutinformation(data[9],data[9])
+for (i in 1:ncol(data)) {
+    print(mutinformation(discretize(data[i]),data[9])/maxInfPos)
+} #Column 2, Glucose tolerance (Plasma glucose concentration @ 2 hrs),
+  #appears to be the best individual predictor and column 3, Diastolic
+  #blood pressure (mm Hg), appears to be the worst. This may be useful
+  #in narrowing features later on.
+```
+
 > Principal Component Analysis?
 
 2. Provide any key output (figures or tables).
