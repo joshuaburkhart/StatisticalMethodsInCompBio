@@ -1,0 +1,183 @@
+---
+title: "StatMethodsHW2"
+author: "Joshua Burkhart"
+date: "January 17, 2016"
+output: 
+  pdf_document: 
+    fig_width: 9
+    fig_height: 6
+    latex_engine: xelatex
+---
+
+# BMI 651: HW2
+
+```{r global_options, echo=FALSE, include=FALSE, error=FALSE}
+knitr::opts_chunk$set(fig.path = "Figs/",
+                      message = FALSE,
+                      warning = FALSE,
+                      include = TRUE,
+                      echo = TRUE,
+                      error = TRUE,
+                      fig.width = 11,
+                      comment = NA)
+```
+
+```{r, echo=FALSE, include=FALSE}
+library(MASS)
+library(plyr) #this must be loaded before dplyr 
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(knitr)
+library(magrittr)
+library(reshape2)
+library(infotheo)
+library(stats)
+library(ggbiplot)
+library(car)
+```
+
+> Based on the readings and in-class discussion,  conduct EDA and regression diagnostics to determine if there are any violations of assumptions. 
+
+## Provide detailed script (10pts) 
+
+> See the source .Rmd document.
+
+## Write-up with the key figures and tables as well as description of any issues and how you handled them in order to analyze the data (20 pts) Note: you should be able to describe any output or figures without jargon!!!
+
+> See below output.
+
+### Load Data
+
+```{r}
+data <- read.csv("~/SoftwareProjects/StatisticalMethodsInCompBio/HW2/HIV.txt",sep="")
+```
+
+### Missing Data
+
+```{r}
+sapply(data, function(x) sum(is.na(x)))
+```
+
+> One missing ViralLoad is reported, violating an assumption of no missing or invalid data. We'll just remove it for now.
+
+```{r}
+data_rm_na <- na.omit(data)
+```
+
+### Distributions
+
+```{r}
+hist(data_rm_na$StrainScore, 
+     xlab="Strain Score", 
+     main="Strain Score Histogram")
+```
+
+> Unimodal wth a slight skew, looks close enough to a Gaussian...
+
+```{r}
+hist(data_rm_na$ViralLoad,
+     xlab="Viral Load",
+     main="Viral Load Histogram")
+```
+
+> Outcome distribution looks funny (bimodal with strong skew) and violates an assumption of normally distributed data.
+
+### Outliers
+
+```{r}
+ssbp <- Boxplot(data_rm_na$StrainScore,
+        ylab="Strain Score",
+        main="Strain Score Boxplot")
+ssbp #outliers reported
+```
+
+> No outliers reported for input.
+
+```{r}
+vlbp <- Boxplot(data_rm_na$ViralLoad,
+        ylab="Viral Load",
+        main="Viral Load Boxplot")
+vlbp #outliers reported
+```
+
+> Five outliers reported in output. Row Numbers: 27, 16, 6, 21, and 43.
+
+```{r}
+model <- lm(data_rm_na$ViralLoad ~ data_rm_na$StrainScore)
+summary(model)
+```
+
+> In the context of a linear model, Strain Score does not appear to be a strong predictor of Viral Load (p = 0.396).
+
+### Leverage
+
+```{r}
+leveragePlot(model,
+              term.name="data_rm_na$StrainScore",
+              id.n=3,
+              xlab="Strain Score (Rescaled)",
+              ylab="Viral Load")
+```
+
+> The datapoints with highest leverage are from row numbers 27, 16, 24, 6, and 22.
+
+### Influence
+
+```{r}
+plot(model, 
+     which=4,
+     sub.caption="(Row Number)") #plot.lm 4 is Cook's Distance
+```
+
+> We can see that data from rows 16 and 27 appear highly influential.
+
+```{r}
+cdbp <- Boxplot(cooks.distance(model))
+cdbp
+```
+
+> This boxplot presents the distribution of influential points and labels data from rows 2, 5, 6, 9, 16, 19, 24, 27, 43 as outliers.
+
+### Model
+
+```{r}
+plot(data_rm_na$StrainScore,data_rm_na$ViralLoad,
+     xlab="Strain Score",
+     ylab="Viral Load", 
+     main="Viral Load ~ Strain Score (p = 0.396)")
+abline(model, col="red")
+```
+
+> The model does appear to fit the data but we must remember that it does not do so significantly.
+
+### Rescue?
+
+```{r}
+data_rm_na[27,] 
+range(data_rm_na[-27,][2])
+```
+
+> Data Row 27 reports a Viral Load almost triple the range for all other points. If we assume this is a mistake, we can remove it and rerun our model.
+
+```{r}
+data_rm_na_no27 <- data_rm_na[-27,]
+model_no27 <- lm(data_rm_na_no27$ViralLoad ~ data_rm_na_no27$StrainScore)
+summary(model_no27)
+```
+
+> Strain Score becomes a significant predictor of Viral Load after removing row 27.
+
+```{r}
+plot(data_rm_na_no27$StrainScore,data_rm_na_no27$ViralLoad,
+     xlab="Strain Score",
+     ylab="Viral Load", 
+     main="Viral Load ~ Strain Score (p = 0.0378)")
+abline(model_no27, col="red")
+```
+
+> We must be cautious in accepting this result as row 27 may not have been a mistake after all. Viral Loads over 1 million have been reported[1].
+
+## References
+
+[1] http://www.catie.ca/en/fact-sheets/transmission/hiv-viral-load-hiv-treatment-and-sexual-hiv-transmission
