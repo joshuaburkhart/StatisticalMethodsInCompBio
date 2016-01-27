@@ -1,0 +1,57 @@
+---
+title: "StatMethodsHW3A"
+author: "Joshua Burkhart"
+date: "January 26, 2016"
+output: 
+  pdf_document: 
+    fig_width: 9
+    fig_height: 6
+    latex_engine: xelatex
+---
+
+# BMI 651: HW3 A
+
+```{r global_options, echo=FALSE, include=FALSE, error=FALSE}
+knitr::opts_chunk$set(fig.path = "Figs/",
+                      message = FALSE,
+                      warning = FALSE,
+                      include = TRUE,
+                      echo = TRUE,
+                      error = TRUE,
+                      fig.width = 11,
+                      comment = NA)
+```
+
+```{r, echo=FALSE, include=FALSE}
+library(MASS)
+library(plyr) #this must be loaded before dplyr 
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(knitr)
+library(magrittr)
+library(reshape2)
+library(infotheo)
+library(stats)
+library(ggbiplot)
+library(car)
+library("Hiiragi2013")
+```
+
+## (1) draft analysis plan for developing classifier for predating developmental stage (E3.25) based on gene expression
+
+> 1. Check/correct data typing. Ex: factors encoded as ints  
+  2. Check/remove rows with missing data  
+  3. Check/remove rows with nonsense data
+  4. Check/Z-score ranges / distributions
+  4. Randomly split data into training / test sets
+  5. see http://www.r-bloggers.com/fitting-a-neural-network-in-r-neuralnet-package/  
+  6. PCA test set? http://stats.stackexchange.com/questions/121522/how-to-transform-test-set-to-the-pca-space-of-the-training-set-if-the-features  
+
+## (2) Write R script for performing EDA on the data set and then perform EDA
+
+## (3) Create version 2 of analysis plan that includes EDA and any revisions (if needed) based on EDA 
+
+## (4) Write R script for analyzing the data 
+
+## For submission A, provide the 2 analysis plans and 2 R scripts. 
