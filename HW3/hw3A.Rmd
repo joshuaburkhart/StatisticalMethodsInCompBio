@@ -60,9 +60,9 @@ set.seed(2013) #does this need to be set to 2013? why?
 ### Load Data
   
 ```{r}
-data("x")
-hw3A.features <- t(assayDataElement(x@assayData,'exprs'))
-hw3A.classes <- x@phenoData@data$Embryonic.day
+data("xq")
+hw3A.features <- t(assayDataElement(xq@assayData,'exprs'))
+hw3A.classes <- xq@phenoData@data$Embryonic.day
 ```
 
 ### Missing Data
@@ -72,7 +72,19 @@ sapply(hw3A.features, function(x) sum(is.na(x)))
 sapply(hw3A.classes, function(x) sum(is.na(x)))
 ```
 
-> No missing data reported
+> Missing data reported. Remove it.
+
+```{r}
+hw3A.features <- na.omit(hw3A.features)
+```
+
+### Transform non E3.25 values to NOT_E3.25
+
+```{r}
+hw3A.classes[hw3A.classes == "E3.25"] <- "TRUE"
+hw3A.classes[hw3A.classes == "E3.5"] <- "FALSE"
+hw3A.classes[hw3A.classes == "E4.5"] <- "FALSE"
+```
 
 ### Split into Training & Test sets
 
@@ -82,6 +94,15 @@ hw3A.features_train <- hw3A.features[index,]
 hw3A.classes_train <- hw3A.classes[index]
 hw3A.features_test <- hw3A.features[-index,]
 hw3A.classes_test <- hw3A.classes[-index]
+```
+
+### Test for batch effects
+
+```{r}
+#date
+data.frame(x@phenoData@data$Embryonic.day, x@protocolData@data$ScanDate)
+names(d) <- c("dev","date")
+d[order(d[,2],d[,1]),]
 ```
 
 ### Z-score training set
@@ -101,18 +122,19 @@ for(i in 1:ncol(hw3A.features_train))
 
 ```{r}
 class <- as.factor(hw3A.classes_train)
+hw3A.features_train_normalized[is.infinite(hw3A.features_train_normalized)] <- -99999
 data_pc <- prcomp(hw3A.features_train_normalized,center=FALSE,scale. = FALSE,retx=TRUE)
 print(data_pc)
 summary(data_pc)
 plot(data_pc,type="l") 
 ```
 
-> Over 98% of the variance is explained by the first 12 pc's, over 99% by the first 40
+> All of the variance is explained in 6 PC's
 
 ```{r}
-first_12_pcs <- data_pc$x[,1:12]
+first_12_pcs <- data_pc$xq[,1:12]
 first_12_pc_rotations <- data_pc$rotation[,1:12]
-first_40_pcs <- data_pc$x[,1:40]
+first_40_pcs <- data_pc$xq[,1:40]
 first_40_pc_rotations <- data_pc$rotation[,1:40]
 ```
 
