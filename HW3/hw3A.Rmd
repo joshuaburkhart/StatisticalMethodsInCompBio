@@ -12,11 +12,11 @@ output:
 
 ## (1) draft analysis plan for developing classifier for predating developmental stage (E3.25) based on gene expression
 
-> Let us assume our final goal is to build a classifier that can be generalized for this microarray platform/probeset to not only correctly label test data as "E3.25" or not in this experiment but whose results may be interpreted by experts in the field to gain knowledge about any biological interactions that occur between selected features and developmental stage. Considering this, we'll limit our feature space to probe intensities, gene expression levels, and genotype. Though we're ignoring EDA and potential batch effects for the moment, we'll still reject metadata such as microarray date, number of cells, or index in the original dataset as feature candidates due to our noted constraint of creating a model that may increase biological insight into development. 
+> Let us assume our final goal is to build a classifier that can be generalized for this microarray platform/probeset to not only correctly label test data as "E3.25" or not in this experiment but whose results may be interpreted by experts in the field to gain knowledge about any biological interactions that occur between selected features and developmental stage. Considering this, we'll limit our feature space to probe intensities, gene expression levels, cell type, cell position label, and genotype. Though we're ignoring EDA and potential batch effects for the moment, we'll still reject metadata such as microarray date, number of cells, or index in the original dataset as feature candidates due to our noted constraint of creating a model that may increase biological insight into development. 
 
-> 1. Extract feature candidates, probe intensities, gene expression levels, and genotypes, from their original data sources and combine them into a single data table. This will allow for simpler handling for the remainder of the analysis. 
+> 1. Extract feature candidates, probe intensities, gene expression levels, etc., from their original data sources and combine them into a single data table. This will allow for simpler handling for the remainder of the analysis. 
 
-> 2. Scan & address missing data. Because we have so few samples (101) and so many total features (over 45,000), we'll prefer to drop features than drop samples. We must scan probe intensities, gene expression levels, and genotypes.
+> 2. Scan & address missing data. Because we have so few samples (101) and so many total features (over 45,000), we'll prefer to drop features than drop samples. We must scan probe intensities, gene expression levels, etc..
 
 > 3. Convert genotype to a numeric value. Currently, genotype is stored as one of two values: "FGF4-KO" and "WT". We'll change "FGF4-KO" to 1 and "WT" to 0.
 
@@ -112,15 +112,74 @@ sum(is.na(hw3A.xq.classes))
 sum(is.na(hw3A.xql.classes))
 ```
 
-> 302 na's reported in the gene expression data but nowhere else. We'll have to deal with it...
+> 302 na's reported in the xq gene expression data but nowhere else. The na's are from Spp1 (40), Prdm14 (40), Sdc4 (40), Morc1 (67), Tbpl1 (2), and Zp3 (113). For now we'll remove them. We may want to replace them with dummy values later as we have so few features for the xq dataset (38 gene expression levels and cell type).
 
 ```{r}
-hw3A.features <- na.omit(hw3A.features)
+t(hw3A.xq.gene_expressions) %>% summary()
+hw3A.xq.gene_expressions <- na.omit(hw3A.xq.gene_expressions)
+```
+
+### Checking Distributions
+
+> Check outcome ratios. None show a uniform distribution and xql doesn't contain E3.25 developmental stage results. We can safely remove it from our analysis going forward.
+
+```{r}
+plot(x=hw3A.x.classes)
+plot(x=as.factor(hw3A.xq.classes))
+plot(x=as.factor(hw3A.xql.classes))
+```
+
+> Check feature vectors. Genotypes are skewed. The probe intensities overall are slightly skewed while the probe intensity distributions all appear uniformly distributed with only two having noticable differences. It's odd to have noticably different distributions as they were all supposed to have been normalized in the x dataset. The gene expressions show wide variation among samples.
+
+```{r}
+#x
+plot(x=hw3A.x.genotypes)
+
+#probe intensities contain too much data for plot()
+range(hw3A.x.probe_intensities)
+rdiff <- round(range(hw3A.x.probe_intensities)[2] - range(hw3A.x.probe_intensities)[1])
+bins <- seq(1:rdiff)
+Boxplot(.bincode(hw3A.x.probe_intensities[,1],bins))
+mm <- melt(hw3A.x.probe_intensities)
+ggplot(mm) + geom_boxplot(aes(y=round(mm$value), x=mm$variable, colour=floor(mm$value)))
+
+#xq
+plot(as.factor(hw3A.xq.cell_type))
+
+#gene expressions too much data for plot()
+range(hw3A.xq.gene_expressions)
+rdiff <- round(range(hw3A.xq.gene_expressions)[2] - range(hw3A.xq.gene_expressions)[1])
+bins <- seq(1:rdiff)
+Boxplot(.bincode(hw3A.xq.gene_expressions[,1],bins))
+mm2 <- melt(hw3A.xq.gene_expressions)
+ggplot(mm2) + geom_boxplot(aes(y=round(mm2$value), x=mm2$variable, colour=floor(mm2$value)))
+```
+
+> Test distributions vs outcomes. These may not be visualized well but genotypes and cell types can be tested easily using Chi-squared tests. Genotypes are fairly well balanced among developmental stages but cell types are skewed.
+
+```{r}
+#x
+table(x=hw3A.x.genotypes,y=hw3A.x.classes) %>% chisq.test()
+
+smush <- t(data.frame(hw3A.x.probe_intensities))
+mm2 <- melt(smush)
+mm2$class <- hw3A.x.classes
+ggplot(mm2) + geom_boxplot(aes(y=round(value), x=Var1, colour=floor(value))) +
+  facet_wrap(~ class)
+
+#xq
+table(hw3A.xq.cell_type,hw3A.xq.classes) %>% chisq.test()
+
+smush <- t(data.frame(hw3A.xq.gene_expressions))
+mm2 <- melt(smush)
+mm2$class <- hw3A.xq.classes
+ggplot(mm2) + geom_boxplot(aes(y=round(value), x=Var1, colour=floor(value))) +
+  facet_wrap(~ class)
 ```
 
 ### Test for Batch Effects
 
-> Plotting array index vs developmental stage. Note xq and xql don't store Embryonic.day as a factor like x does. We should consider the regularity of the positions in these datasets when separating our data into training and test sets. Correlation coefficients agree in both of the latter cases, though visual inspection of the first plot also shows obvious bias.
+> Plotting array index vs developmental stage. Note xq doesn't store Embryonic.day as a factor like x does. We should consider the regularity of the positions in these datasets when separating our data into training and test sets. Correlation coefficients agree in both of the latter cases, though visual inspection of the first plot also shows obvious bias.
 
 ```{r}
 # x
@@ -134,15 +193,9 @@ xq.idx <- seq(1,length(hw3A.xq.classes))
 plot(x=xq.idx,
      y=as.factor(hw3A.xq.classes))
 cor(xq.idx,as.numeric(as.factor(hw3A.xq.classes)))
-
-# xql
-xql.idx <- seq(1,length(hw3A.xql.classes))
-plot(x=xql.idx,
-     y=as.factor(hw3A.xql.classes))
-cor(xql.idx,as.numeric(as.factor(hw3A.xql.classes)))
 ```
 
-> Plotting dates vs developmental stage. Unfortunately, developmental stage appears highly correlated with both date variables over several years. This indicates unknown and unrecorded variables could be influencing the results of our data. Chi-squared tests agree in both cases, shown by extreemly low p-values.
+> Plotting dates vs developmental stage for dataset x. Unfortunately, developmental stage appears highly correlated with both date variables over several years. This indicates unknown and unrecorded variables could be influencing the results of our data. Chi-squared tests agree in both cases, shown by extreemly low p-values.
 
 ```{r}
 # x phenotypic scan dates
@@ -166,6 +219,11 @@ table(hw3A.x.num_cells,hw3A.x.classes) %>% chisq.test()
 ```
 
 ## (3) Create version 2 of analysis plan that includes EDA and any revisions (if needed) based on EDA 
+
+> Considering the serious batch effects discovered during EDA, we should include a step to address this. Also, it was previously thought that the datasets x, xq, and xql contained the same samples and that their probe intensities, gene expression, etc. could be combined into a single table. After examining the available data, there appears no way to map data from one dataset to another, and xql doesn't have any "E3.25" developmental stage results, thus two separate learning experiments will have to be performed. We'll still use decision tree, logistic regression, and support vector machine for each dataset and still use a training test data split of 80/20.
+
+> 0. Address batch effects of both scan dates and numbers of cells.
+> 1-10
 
 ## (4) Write R script for analyzing the data 
 
