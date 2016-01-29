@@ -230,9 +230,9 @@ table(hw3A.x.num_cells,hw3A.x.classes) %>% chisq.test()
 ### Transform non E3.25 values to NOT_E3.25
 
 ```{r}
-hw3A.classes[hw3A.classes == "E3.25"] <- "TRUE"
-hw3A.classes[hw3A.classes == "E3.5"] <- "FALSE"
-hw3A.classes[hw3A.classes == "E4.5"] <- "FALSE"
+hw3A.classes[hw3A.x.classes == "E3.25"] <- 1
+hw3A.classes[hw3A.x.classes == "E3.5"] <- 0
+hw3A.classes[hw3A.x.classes == "E4.5"] <- 0
 ```
 
 ### Split into Training & Test sets
@@ -243,21 +243,6 @@ hw3A.features_train <- hw3A.features[index,]
 hw3A.classes_train <- hw3A.classes[index]
 hw3A.features_test <- hw3A.features[-index,]
 hw3A.classes_test <- hw3A.classes[-index]
-```
-
-### Test for batch effects
-
-```{r}
-#date
-data.frame(x@phenoData@data$Embryonic.day, x@protocolData@data$ScanDate)
-names(d) <- c("dev","date")
-d[order(d[,2],d[,1]),]
-
-#genotype
-x@phenoData@data$genotype %>% table()
-
-#developmental stage
-x@phenoData@data$Embryonic.day %>% table()
 ```
 
 ### Z-score training set
@@ -273,24 +258,28 @@ for(i in 1:ncol(hw3A.features_train))
     hw3A.features_train_normalized[j,i] = (hw3A.features_train[j,i] - train_mean[i]) / train_sd[i]
 ```
 
-### Principal Component Analysis
+### Mutual Information?
 
 ```{r}
-class <- as.factor(hw3A.classes_train)
-hw3A.features_train_normalized[is.infinite(hw3A.features_train_normalized)] <- -99999
-data_pc <- prcomp(hw3A.features_train_normalized,center=FALSE,scale. = FALSE,retx=TRUE)
-print(data_pc)
-summary(data_pc)
-plot(data_pc,type="l") 
-```
+# x genotype
+x.probes <- matrix()
+maxInfPos <- mutinformation(discretize(hw3A.x.classes),discretize(hw3A.x.classes))
+num_genotypes <- hw3A.x.genotypes %>% base::levels() %>% length()
+for (i in 1:num_genotypes)) {
+    x.probes <- rbind(x.probes, c(names(hw3A.x.genotypes)[i],
+          mutinformation(discretize(hw3A.x.genotypes[i]),discretize(hw3A.x.classes))/maxInfPos))
+}
+x.probes
 
-> All of the variance is explained in 6 PC's
-
-```{r}
-first_12_pcs <- data_pc$xq[,1:12]
-first_12_pc_rotations <- data_pc$rotation[,1:12]
-first_40_pcs <- data_pc$xq[,1:40]
-first_40_pc_rotations <- data_pc$rotation[,1:40]
+# xq cell type
+xq.cell_types <- matrix()
+maxInfPos <- mutinformation(discretize(hw3A.xq.classes),discretize(hw3A.xq.classes))
+num_cell_types <- as.factor(hw3A.xq.cell_type) %>% base::levels() %>% length()
+for (i in 1:num_cell_types) {
+    xq.cell_types <- rbind(xq.cell_types, c(names(hw3A.xq.cell_type)[i],
+          mutinformation(discretize(hw3A.xq.cell_type[i]),discretize(hw3A.xq.classes))/maxInfPos))
+}
+xq.cell_types
 ```
 
 ## For submission A, provide the 2 analysis plans and 2 R scripts. 
