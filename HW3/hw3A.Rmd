@@ -8,8 +8,33 @@ output:
     fig_height: 6
     latex_engine: xelatex
 ---
-
 # BMI 651: HW3 A
+
+## (1) draft analysis plan for developing classifier for predating developmental stage (E3.25) based on gene expression
+
+> Let us assume our final goal is to build a classifier that can be generalized for this microarray platform/probeset to not only correctly label test data as "E3.25" or not in this experiment but whose results may be interpreted by experts in the field to gain knowledge about any biological interactions that occur between selected features and developmental stage. Considering this, we'll limit our feature space to probe intensities, gene expression levels, and genotype. Though we're ignoring EDA and potential batch effects for the moment, we'll still reject metadata such as microarray date, number of cells, or index in the original dataset as feature candidates due to our noted constraint of creating a model that may increase biological insight into development. 
+
+> 1. Extract feature candidates, probe intensities, gene expression levels, and genotypes, from their original data sources and combine them into a single data table. This will allow for simpler handling for the remainder of the analysis. 
+
+> 2. Scan & address missing data. Because we have so few samples (101) and so many total features (over 45,000), we'll prefer to drop features than drop samples. We must scan probe intensities, gene expression levels, and genotypes.
+
+> 3. Convert genotype to a numeric value. Currently, genotype is stored as one of two values: "FGF4-KO" and "WT". We'll change "FGF4-KO" to 1 and "WT" to 0.
+
+> 4. Extract development stage and convert it to a numeric value. Currently, Embryonic.day is stored as one of three values: "E3.25", "E3.5", and "E4.5". We'll copy this column to a separate vector and store our positive class, "E3.25", as 1 and our negative class, "E3.5" and "E4.5", as 0.
+
+> 5. Randomly split data into training and test sets. We should find a way to assure that similar proportians of genotype and class make it into the training and test sets. Also, seeing as we have so few samples, we'll use an 80/20 overall split.
+
+> 6. Z score transform all the feature values, storing the means and standard deviations for all columns so test data can be transformed similarly later on. Putting features on the same scale allows some optimization algorithms, such as gradient descent, to converge more quickly and generally allows for more direct comparisons between feature distributions.
+
+> 7. We'd like to explain a lot of variance without using too many features, as that can make things confusing. Normally I'd favor PCA as a logical next step to a learning system but, keeping in mind we'd like to create a model that's interpretable to biologists later on, it may be better to avoid it. Instead, we'll first try selecting features using mutual information and only resort to PCA if results are poor.
+
+> 8. We'll consider three classification techniques whose results are fairly readily interpretable: decision tree, logistic regression, and support vector machine.
+
+> 9. Depending on the model libraries available, we'll attempt to optimize parameters using k-fold cross validation, trying k=10. This is an arbitrary choice of approximately 10% of our original data and may have to be reduced if models have a difficult time converging.
+
+> 10. Test. First, apply Z score transformations to test data using stored means and standard deviations from training data, run the model and see what pops out.
+
+## (2) Write R script for performing EDA on the data set and then perform EDA
 
 ```{r global_options, echo=FALSE, include=FALSE, error=FALSE}
 knitr::opts_chunk$set(fig.path = "Figs/",
@@ -39,19 +64,8 @@ library("Hiiragi2013")
 set.seed(2013) #does this need to be set to 2013? why?
 ```
 
-## (1) draft analysis plan for developing classifier for predating developmental stage (E3.25) based on gene expression
+### Data Source Description
 
-> 1. Check/remove rows with missing data  
-  2. Randomly split data into training / test sets
-  3. Check/Z-score ranges / distributions
-  5. PCA training set [2]
-  6. Train neural net on PC's
-  7. Transform test set with stored means / sd's & PC rotations
-  8. Test
-  9. Rerun with cross validation if time allows
-
-## (2) Write R script for performing EDA on the data set and then perform EDA
-  
   a: raw intensity values from the original CEL files arranged in a matrix layout, where each column represents one hybridization, and rows stand for individual array features
   x: RMA normalized dataset in the assayData and annotation in the phenoData
   xq: single-cell gene expression levels measured by qPCR
@@ -60,23 +74,100 @@ set.seed(2013) #does this need to be set to 2013? why?
 ### Load Data
   
 ```{r}
+data("x")
 data("xq")
-hw3A.features <- t(assayDataElement(xq@assayData,'exprs'))
-hw3A.classes <- xq@phenoData@data$Embryonic.day
+data("xql")
+
+#feature candidates
+hw3A.x.genotypes <- x@phenoData@data$genotype
+hw3A.x.probe_intensities <- data.frame(assayDataElement(x@assayData,'exprs'))
+hw3A.xq.cell_type <- xq@phenoData@data$Cell.type
+hw3A.xq.gene_expressions <- data.frame(assayDataElement(xq@assayData,'exprs'))
+hw3A.xql.label <- xql@phenoData@data$Label
+hw3A.xql.gene_expressions <- data.frame(assayDataElement(xql@assayData,'exprs'))
+
+#classes
+hw3A.x.classes <- x@phenoData@data$Embryonic.day
+hw3A.xq.classes <- xq@phenoData@data$Embryonic.day
+hw3A.xql.classes <- xql@phenoData@data$Embryonic.day
+
+#additional data we'll consider when testing for batch effects 
+hw3A.x.pheno_dates <- as.Date(x@phenoData@data$ScanDate)
+hw3A.x.proto_dates <- as.Date(x@protocolData@data$ScanDate)
+hw3A.x.num_cells <- as.numeric(x@phenoData@data$Total.number.of.cells)
 ```
 
-### Missing Data
+### Scan for missing Data
 
 ```{r}
-sapply(hw3A.features, function(x) sum(is.na(x)))
-sapply(hw3A.classes, function(x) sum(is.na(x)))
+sum(is.na(hw3A.x.genotypes))
+sum(is.na(hw3A.x.probe_intensities))
+sum(is.na(hw3A.xq.cell_type))
+sum(is.na(hw3A.xq.gene_expressions))
+sum(is.na(hw3A.xql.label))
+sum(is.na(hw3A.xql.gene_expressions))
+
+sum(is.na(hw3A.x.classes))
+sum(is.na(hw3A.xq.classes))
+sum(is.na(hw3A.xql.classes))
 ```
 
-> Missing data reported. Remove it.
+> 302 na's reported in the gene expression data but nowhere else. We'll have to deal with it...
 
 ```{r}
 hw3A.features <- na.omit(hw3A.features)
 ```
+
+### Test for Batch Effects
+
+> Plotting array index vs developmental stage. Note xq and xql don't store Embryonic.day as a factor like x does. We should consider the regularity of the positions in these datasets when separating our data into training and test sets. Correlation coefficients agree in both of the latter cases, though visual inspection of the first plot also shows obvious bias.
+
+```{r}
+# x
+x.idx <- seq(1,length(hw3A.x.classes))
+plot(x=x.idx,
+     y=hw3A.x.classes)
+cor(x.idx,as.numeric(hw3A.x.classes))
+
+# xq
+xq.idx <- seq(1,length(hw3A.xq.classes))
+plot(x=xq.idx,
+     y=as.factor(hw3A.xq.classes))
+cor(xq.idx,as.numeric(as.factor(hw3A.xq.classes)))
+
+# xql
+xql.idx <- seq(1,length(hw3A.xql.classes))
+plot(x=xql.idx,
+     y=as.factor(hw3A.xql.classes))
+cor(xql.idx,as.numeric(as.factor(hw3A.xql.classes)))
+```
+
+> Plotting dates vs developmental stage. Unfortunately, developmental stage appears highly correlated with both date variables over several years. This indicates unknown and unrecorded variables could be influencing the results of our data. Chi-squared tests agree in both cases, shown by extreemly low p-values.
+
+```{r}
+# x phenotypic scan dates
+plot(x=hw3A.x.pheno_dates,
+     y=hw3A.x.classes)
+table(hw3A.x.pheno_dates,hw3A.x.classes) %>% chisq.test()
+
+# x protocol scan dates
+plot(x=hw3A.x.proto_dates,
+     y=hw3A.x.classes)
+table(hw3A.x.proto_dates,hw3A.x.classes) %>% chisq.test()
+```
+
+> Plotting number of cells vs developmental stage. Like the dates above, the number of cells appears to correlate well with developmental stage. And again, a Chi-squared test agrees.
+
+```{r}
+# x number of cells
+plot(x=hw3A.x.num_cells,
+     y=hw3A.x.classes)
+table(hw3A.x.num_cells,hw3A.x.classes) %>% chisq.test()
+```
+
+## (3) Create version 2 of analysis plan that includes EDA and any revisions (if needed) based on EDA 
+
+## (4) Write R script for analyzing the data 
 
 ### Transform non E3.25 values to NOT_E3.25
 
@@ -103,6 +194,12 @@ hw3A.classes_test <- hw3A.classes[-index]
 data.frame(x@phenoData@data$Embryonic.day, x@protocolData@data$ScanDate)
 names(d) <- c("dev","date")
 d[order(d[,2],d[,1]),]
+
+#genotype
+x@phenoData@data$genotype %>% table()
+
+#developmental stage
+x@phenoData@data$Embryonic.day %>% table()
 ```
 
 ### Z-score training set
@@ -138,10 +235,6 @@ first_40_pcs <- data_pc$xq[,1:40]
 first_40_pc_rotations <- data_pc$rotation[,1:40]
 ```
 
-## (3) Create version 2 of analysis plan that includes EDA and any revisions (if needed) based on EDA 
-
-## (4) Write R script for analyzing the data 
-
 ## For submission A, provide the 2 analysis plans and 2 R scripts. 
 
 ## References
@@ -151,3 +244,4 @@ first_40_pc_rotations <- data_pc$rotation[,1:40]
 [3] https://support.bioconductor.org/p/40730/
 [4] https://bioconductor.org/packages/release/data/experiment/manuals/Hiiragi2013/man/Hiiragi2013.pdf
 [5] http://127.0.0.1:17064/library/Hiiragi2013/doc/Hiiragi2013.pdf
+[6] http://www.rdatamining.com/examples/decision-tree
