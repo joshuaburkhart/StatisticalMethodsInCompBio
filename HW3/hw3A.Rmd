@@ -66,9 +66,9 @@ set.seed(2013) #does this need to be set to 2013? why?
 
 ### Data Source Description
 
-  a: raw intensity values from the original CEL files arranged in a matrix layout, where each column represents one hybridization, and rows stand for individual array features
-  x: RMA normalized dataset in the assayData and annotation in the phenoData
-  xq: single-cell gene expression levels measured by qPCR
+> a: raw intensity values from the original CEL files arranged in a matrix layout, where each column represents one hybridization, and rows stand for individual array features  
+  x: RMA normalized dataset in the assayData and annotation in the phenoData  
+  xq: single-cell gene expression levels measured by qPCR  
   xql: single-cell gene expression measured by qPCR, with cells facing the blastocyst cavity labelled fluorescently
   
 ### Load Data
@@ -99,7 +99,7 @@ hw3A.x.num_cells <- as.numeric(x@phenoData@data$Total.number.of.cells)
 
 ### Scan for missing Data
 
-```{r}
+```{r, eval=FALSE}
 sum(is.na(hw3A.x.genotypes))
 sum(is.na(hw3A.x.probe_intensities))
 sum(is.na(hw3A.xq.cell_type))
@@ -112,9 +112,9 @@ sum(is.na(hw3A.xq.classes))
 sum(is.na(hw3A.xql.classes))
 ```
 
-> 302 na's reported in the xq gene expression data but nowhere else. The na's are from Spp1 (40), Prdm14 (40), Sdc4 (40), Morc1 (67), Tbpl1 (2), and Zp3 (113). For now we'll remove them. We may want to replace them with dummy values later as we have so few features for the xq dataset (38 gene expression levels and cell type).
+> (Output omitted) 302 na's reported in the xq gene expression data but nowhere else. The na's are from Spp1 (40), Prdm14 (40), Sdc4 (40), Morc1 (67), Tbpl1 (2), and Zp3 (113). For now we'll remove them. We may want to replace them with dummy values later as we have so few features for the xq dataset (38 gene expression levels and cell type).
 
-```{r}
+```{r, eval=FALSE}
 t(hw3A.xq.gene_expressions) %>% summary()
 hw3A.xq.gene_expressions <- na.omit(hw3A.xq.gene_expressions)
 ```
@@ -123,36 +123,65 @@ hw3A.xq.gene_expressions <- na.omit(hw3A.xq.gene_expressions)
 
 > Check outcome ratios. None show a uniform distribution and xql doesn't contain E3.25 developmental stage results. We can safely remove it from our analysis going forward.
 
-```{r}
-plot(x=hw3A.x.classes)
-plot(x=as.factor(hw3A.xq.classes))
-plot(x=as.factor(hw3A.xql.classes))
+```{r, echo=FALSE}
+plot(x=hw3A.x.classes,
+     xlab="Developmental Stage",
+     ylab="Abundance",
+     main="Distribution of Developmental Stages in Dataset x")
+plot(x=as.factor(hw3A.xq.classes),     
+     xlab="Developmental Stage",
+     ylab="Abundance",
+     main="Distribution of Developmental Stages in Dataset xq")
+plot(x=as.factor(hw3A.xql.classes),
+     xlab="Developmental Stage",
+     ylab="Abundance",
+     main="Distribution of Developmental Stages in Dataset xql")
 ```
 
 > Check feature vectors. Genotypes are skewed. The probe intensities overall are slightly skewed while the probe intensity distributions all appear uniformly distributed with only two having noticable differences. It's odd to have noticably different distributions as they were all supposed to have been normalized in the x dataset. The gene expressions show wide variation among samples.
 
-```{r}
+```{r, echo=FALSE}
 #x
-plot(x=hw3A.x.genotypes)
+plot(x=hw3A.x.genotypes,
+     xlab="Genotype",
+     ylab="Abundance",
+     main="Distribution of Genotypes in Dataset x")
 
 #probe intensities contain too much data for plot()
-range(hw3A.x.probe_intensities)
+range(hw3A.x.probe_intensities) %>% invisible()
 rdiff <- round(range(hw3A.x.probe_intensities)[2] - range(hw3A.x.probe_intensities)[1])
 bins <- seq(1:rdiff)
-Boxplot(.bincode(hw3A.x.probe_intensities[,1],bins))
+Boxplot(.bincode(hw3A.x.probe_intensities[,1],bins),
+     ylab="Intensity",
+     main="Distribution of Probe Intensities in Dataset x") %>% invisible()
 mm <- melt(hw3A.x.probe_intensities)
-ggplot(mm) + geom_boxplot(aes(y=round(mm$value), x=mm$variable, colour=floor(mm$value)))
+ggplot(mm) +
+  geom_boxplot(
+    aes(y=round(value),x=variable,colour=floor(value))) +
+  labs(x="Sample",
+       y="Probe Intensity Distribution",
+       title="Probe Intensity Distributions Across Samples")
 
 #xq
-plot(as.factor(hw3A.xq.cell_type))
+plot(as.factor(hw3A.xq.cell_type),
+     xlab="Cell Type",
+     ylab="Abundance",
+     main="Distribution of Cell Type in Dataset xq")
 
 #gene expressions too much data for plot()
-range(hw3A.xq.gene_expressions)
+range(hw3A.xq.gene_expressions) %>% invisible()
 rdiff <- round(range(hw3A.xq.gene_expressions)[2] - range(hw3A.xq.gene_expressions)[1])
 bins <- seq(1:rdiff)
-Boxplot(.bincode(hw3A.xq.gene_expressions[,1],bins))
+Boxplot(.bincode(hw3A.xq.gene_expressions[,1],bins),
+     ylab="Expression Level",
+     main="Distribution of Gene Expression Levels in Dataset xq") %>% invisible()
 mm2 <- melt(hw3A.xq.gene_expressions)
-ggplot(mm2) + geom_boxplot(aes(y=round(mm2$value), x=mm2$variable, colour=floor(mm2$value)))
+ggplot(mm2) +
+  geom_boxplot(
+    aes(y=round(value),x=variable,colour=floor(value))) +
+  labs(x="Sample",
+       y="Gene Expression Distribution",
+       title="Gene Expression Distributions Across Samples")
 ```
 
 > Test distributions vs outcomes. These may not be visualized well but genotypes and cell types can be tested easily using Chi-squared tests. Genotypes are fairly well balanced among developmental stages but cell types are skewed.
@@ -160,61 +189,108 @@ ggplot(mm2) + geom_boxplot(aes(y=round(mm2$value), x=mm2$variable, colour=floor(
 ```{r}
 #x
 table(x=hw3A.x.genotypes,y=hw3A.x.classes) %>% chisq.test()
+```
 
+```{r, echo=FALSE}
 smush <- t(data.frame(hw3A.x.probe_intensities))
-mm2 <- melt(smush)
-mm2$class <- hw3A.x.classes
-ggplot(mm2) + geom_boxplot(aes(y=round(value), x=Var1, colour=floor(value))) +
-  facet_wrap(~ class)
+mm3 <- melt(smush)
+mm3$class <- hw3A.x.classes
+ggplot(mm3) +
+  geom_boxplot(aes(y=round(value), x=Var1, colour=floor(value))) +
+  facet_wrap(~ class) +
+  labs(x="Developmental Stage",
+       y="Probe Intensity Distributions Across Samples",
+       title="Probe Intensity Distributions Across Samples Across Developmental Stages in Dataset x")
+```
 
+```{r}
 #xq
 table(hw3A.xq.cell_type,hw3A.xq.classes) %>% chisq.test()
+```
 
+```{r, echo=FALSE}
 smush <- t(data.frame(hw3A.xq.gene_expressions))
-mm2 <- melt(smush)
-mm2$class <- hw3A.xq.classes
-ggplot(mm2) + geom_boxplot(aes(y=round(value), x=Var1, colour=floor(value))) +
-  facet_wrap(~ class)
+mm4 <- melt(smush)
+mm4$class <- hw3A.xq.classes
+ggplot(mm4) +
+  geom_boxplot(aes(y=round(value), x=Var1, colour=floor(value))) +
+  facet_wrap(~ class) +
+  labs(x="Developmental Stage",
+       y="Gene Expression Distributions Across Samples",
+       title="Gene Expression Distributions Across Samples Across Developmental Stages in Dataset xq")
 ```
 
 ### Test for Batch Effects
 
 > Plotting array index vs developmental stage. Note xq doesn't store Embryonic.day as a factor like x does. We should consider the regularity of the positions in these datasets when separating our data into training and test sets. Correlation coefficients agree in both of the latter cases, though visual inspection of the first plot also shows obvious bias.
 
-```{r}
+```{r, echo=FALSE}
 # x
 x.idx <- seq(1,length(hw3A.x.classes))
 plot(x=x.idx,
-     y=hw3A.x.classes)
-cor(x.idx,as.numeric(hw3A.x.classes))
+     y=hw3A.x.classes,
+     xlab="Index",
+     ylab="Developmental Stage",
+     main="Developmental Stages Across Index in Dataset x")
+```
 
+```{r}
+cor(x.idx,as.numeric(hw3A.x.classes))
+```
+```{r, echo=FALSE}
 # xq
 xq.idx <- seq(1,length(hw3A.xq.classes))
 plot(x=xq.idx,
-     y=as.factor(hw3A.xq.classes))
+     y=as.factor(hw3A.xq.classes),
+     xlab="Index",
+     ylab="Developmental Stage",
+     main="Developmental Stages Across Index in Dataset xq")
+```
+
+```{r}
 cor(xq.idx,as.numeric(as.factor(hw3A.xq.classes)))
 ```
 
 > Plotting dates vs developmental stage for dataset x. Unfortunately, developmental stage appears highly correlated with both date variables over several years. This indicates unknown and unrecorded variables could be influencing the results of our data. Chi-squared tests agree in both cases, shown by extreemly low p-values.
 
-```{r}
+```{r, echo=FALSE}
 # x phenotypic scan dates
 plot(x=hw3A.x.pheno_dates,
-     y=hw3A.x.classes)
-table(hw3A.x.pheno_dates,hw3A.x.classes) %>% chisq.test()
+     y=hw3A.x.classes,
+     xlab="Phenotypic Scan Date",
+     ylab="Developmental Stage",
+     main="Phenotypic Scan Dates Across Developmental Stages in Dataset x")
+```
 
+```{r}
+table(hw3A.x.pheno_dates,hw3A.x.classes) %>% chisq.test()
+```
+
+```{r, echo=FALSE}
 # x protocol scan dates
 plot(x=hw3A.x.proto_dates,
-     y=hw3A.x.classes)
+     y=hw3A.x.classes,
+     xlab="Protocol Scan Date",
+     ylab="Developmental Stage",
+     main="Protocol Scan Dates Across Developmental Stages in Dataset x")
+```
+
+```{r}
 table(hw3A.x.proto_dates,hw3A.x.classes) %>% chisq.test()
 ```
 
 > Plotting number of cells vs developmental stage. Like the dates above, the number of cells appears to correlate well with developmental stage. And again, a Chi-squared test agrees.
 
-```{r}
+```{r, echo=FALSE}
 # x number of cells
 plot(x=hw3A.x.num_cells,
-     y=hw3A.x.classes)
+     y=hw3A.x.classes,
+     xlab="Number of Cells",
+     ylab="Developmental Stage",
+     main="Number of Cells Across Developmental Stages in Dataset x")
+```
+
+```{r}
 table(hw3A.x.num_cells,hw3A.x.classes) %>% chisq.test()
 ```
 
@@ -222,8 +298,8 @@ table(hw3A.x.num_cells,hw3A.x.classes) %>% chisq.test()
 
 > Considering the serious batch effects discovered during EDA, we should include a step to address this. Also, it was previously thought that the datasets x, xq, and xql contained the same samples and that their probe intensities, gene expression, etc. could be combined into a single table. After examining the available data, there appears no way to map data from one dataset to another, and xql doesn't have any "E3.25" developmental stage results, thus two separate learning experiments will have to be performed. We'll still use decision tree, logistic regression, and support vector machine for each dataset and still use a training test data split of 80/20.
 
-> 0. Address batch effects of both scan dates and numbers of cells.
-> 1-10
+> 0. Address batch effects of both scan dates and numbers of cells.  
+> 1-10 (as above)
 
 ## (4) Write R script for analyzing the data 
 
@@ -294,37 +370,13 @@ for(i in 2:nrow(hw3A.xq.features_train)) # each row is a feature, first is a fac
     (hw3A.xq.features_train[i,j] - xq.train_mean[i]) / xq.train_sd[i]
 ```
 
-### Mutual Information?
-
-```{r}
-# x genotype
-x.probes <- matrix()
-maxInfPos <- mutinformation(discretize(hw3A.x.classes),discretize(hw3A.x.classes))
-num_genotypes <- hw3A.x.genotypes %>% base::levels() %>% length()
-for (i in 1:num_genotypes) {
-    x.probes <- rbind(x.probes, c(names(hw3A.x.genotypes)[i],
-          mutinformation(discretize(hw3A.x.genotypes[i]),discretize(hw3A.x.classes))/maxInfPos))
-}
-x.probes
-
-# xq cell type
-xq.cell_types <- matrix()
-maxInfPos <- mutinformation(discretize(hw3A.xq.classes),discretize(hw3A.xq.classes))
-num_cell_types <- as.factor(hw3A.xq.cell_type) %>% base::levels() %>% length()
-for (i in 1:num_cell_types) {
-    xq.cell_types <- rbind(xq.cell_types, c(names(hw3A.xq.cell_type)[i],
-          mutinformation(discretize(hw3A.xq.cell_type[i]),discretize(hw3A.xq.classes))/maxInfPos))
-}
-xq.cell_types
-```
-
-## For submission A, provide the 2 analysis plans and 2 R scripts. 
+> With our datasets now split and Z scored, we are now ready to move on to feature selection (in the next assignment).
 
 ## References
-> 
-[1] http://www.r-bloggers.com/fitting-a-neural-network-in-r-neuralnet-package/  
-[2] http://stats.stackexchange.com/questions/121522/how-to-transform-test-set-to-the-pca-space-of-the-training-set-if-the-features  
-[3] https://support.bioconductor.org/p/40730/
-[4] https://bioconductor.org/packages/release/data/experiment/manuals/Hiiragi2013/man/Hiiragi2013.pdf
-[5] http://127.0.0.1:17064/library/Hiiragi2013/doc/Hiiragi2013.pdf
-[6] http://www.rdatamining.com/examples/decision-tree
+
+> [1] http://www.r-bloggers.com/fitting-a-neural-network-in-r-neuralnet-package/  
+  [2] http://stats.stackexchange.com/questions/121522/how-to-transform-test-set-to-the-pca-space-of-the-training-set-if-the-features  
+  [3] https://support.bioconductor.org/p/40730/  
+  [4] https://bioconductor.org/packages/release/data/experiment/manuals/Hiiragi2013/man/Hiiragi2013.pdf  
+  [5] http://127.0.0.1:17064/library/Hiiragi2013/doc/Hiiragi2013.pdf  
+  [6] http://www.rdatamining.com/examples/decision-tree  
