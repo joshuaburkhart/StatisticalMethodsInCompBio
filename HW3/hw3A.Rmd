@@ -227,35 +227,71 @@ table(hw3A.x.num_cells,hw3A.x.classes) %>% chisq.test()
 
 ## (4) Write R script for analyzing the data 
 
-### Transform non E3.25 values to NOT_E3.25
+### Transform positive (E3.25) and negative (E3.5 and E4.5) values 1 and 0, respectively
 
 ```{r}
-hw3A.classes[hw3A.x.classes == "E3.25"] <- 1
-hw3A.classes[hw3A.x.classes == "E3.5"] <- 0
-hw3A.classes[hw3A.x.classes == "E4.5"] <- 0
+hw3A.x.classes <- as.character(hw3A.x.classes)
+hw3A.x.classes[hw3A.x.classes == "E3.25"] = 1
+hw3A.x.classes[hw3A.x.classes == "E3.5"] = 0
+hw3A.x.classes[hw3A.x.classes == "E4.5"] = 0
+hw3A.x.classes <- as.factor(hw3A.x.classes)
+
+hw3A.xq.classes <- as.character(hw3A.xq.classes)
+hw3A.xq.classes[hw3A.xq.classes == "E3.25"] = 1
+hw3A.xq.classes[hw3A.xq.classes == "E3.5"] = 0
+hw3A.xq.classes[hw3A.xq.classes == "E4.5"] = 0
+hw3A.xq.classes <- as.factor(hw3A.xq.classes)
+```
+
+### Combine Features for x and xq datasets
+
+```{r}
+hw3A.x.features <- rbind(hw3A.x.genotypes,hw3A.x.probe_intensities)
+hw3A.xq.features <- rbind(as.factor(hw3A.xq.cell_type),hw3A.xq.gene_expressions)
 ```
 
 ### Split into Training & Test sets
 
 ```{r}
-index <- sample(1:nrow(hw3A.features),round(0.8*nrow(hw3A.features)))
-hw3A.features_train <- hw3A.features[index,]
-hw3A.classes_train <- hw3A.classes[index]
-hw3A.features_test <- hw3A.features[-index,]
-hw3A.classes_test <- hw3A.classes[-index]
+# x
+index <- sample(1:ncol(hw3A.x.features),round(0.8*ncol(hw3A.x.features)))
+hw3A.x.features_train <- hw3A.x.features[,index]
+hw3A.x.classes_train <- hw3A.x.classes[index]
+hw3A.x.features_test <- hw3A.x.features[,-index]
+hw3A.x.classes_test <- hw3A.x.classes[-index]
+
+# xq
+index <- sample(1:ncol(hw3A.xq.features),round(0.8*ncol(hw3A.xq.features)))
+hw3A.xq.features_train <- hw3A.xq.features[,index]
+hw3A.xq.classes_train <- hw3A.xq.classes[index]
+hw3A.xq.features_test <- hw3A.xq.features[,-index]
+hw3A.xq.classes_test <- hw3A.xq.classes[-index]
 ```
 
 ### Z-score training set
 
 ```{r}
-train_sd = matrix()
-train_mean = matrix()
-hw3A.features_train_normalized <- hw3A.features_train
-for(i in 1:ncol(hw3A.features_train))
-  train_sd[i] = sd(hw3A.features_train[,i])
-  train_mean[i] = mean(hw3A.features_train[,i])
-  for(j in 1:nrow(hw3A.features_train))
-    hw3A.features_train_normalized[j,i] = (hw3A.features_train[j,i] - train_mean[i]) / train_sd[i]
+# x
+x.train_sd = matrix()
+x.train_mean = matrix()
+hw3A.x.features_train_normalized <- hw3A.x.features_train
+for(i in 2:nrow(hw3A.x.features_train)) # each row is a feature, first is a factor (genotype)
+  x.train_sd[i] = sd(hw3A.x.features_train[i,])
+  x.train_mean[i] = apply(hw3A.x.features_train[i,],1,mean)
+  for(j in 1:ncol(hw3A.x.features_train)) # each column is a sample
+    hw3A.x.features_train_normalized[i,j] =
+    (hw3A.x.features_train[i,j] - x.train_mean[i]) / x.train_sd[i]
+
+# xq  
+xq.train_sd = matrix()
+xq.train_mean = matrix()
+hw3A.xq.features_train_normalized <- hw3A.xq.features_train
+for(i in 2:nrow(hw3A.xq.features_train)) # each row is a feature, first is a factor (cell_type)
+  xq.train_sd[i] = sd(hw3A.xq.features_train[i,])
+  xq.train_mean[i] = apply(hw3A.xq.features_train[i,],1,mean)
+  for(j in 1:ncol(hw3A.xq.features_train)) # each column is a sample
+    hw3A.xq.features_train_normalized[i,j] =
+    (hw3A.xq.features_train[i,j] - xq.train_mean[i]) / xq.train_sd[i]
 ```
 
 ### Mutual Information?
@@ -265,7 +301,7 @@ for(i in 1:ncol(hw3A.features_train))
 x.probes <- matrix()
 maxInfPos <- mutinformation(discretize(hw3A.x.classes),discretize(hw3A.x.classes))
 num_genotypes <- hw3A.x.genotypes %>% base::levels() %>% length()
-for (i in 1:num_genotypes)) {
+for (i in 1:num_genotypes) {
     x.probes <- rbind(x.probes, c(names(hw3A.x.genotypes)[i],
           mutinformation(discretize(hw3A.x.genotypes[i]),discretize(hw3A.x.classes))/maxInfPos))
 }
