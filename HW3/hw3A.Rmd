@@ -222,7 +222,7 @@ ggplot(mm4) +
 
 ### Test for Batch Effects
 
-> Plotting array index vs developmental stage. Note xq doesn't store Embryonic.day as a factor like x does. We should consider the regularity of the positions in these datasets when separating our data into training and test sets. Correlation coefficients agree in both of the latter cases, though visual inspection of the first plot also shows obvious bias.
+> Plotting array index vs developmental stage. Note xq doesn't store Embryonic.day as a factor like x does. We should consider the regularity of the positions in these datasets when separating our data into training and test sets. Correlation coefficient agrees in the latter case, though visual inspection of the first plot also shows obvious bias.
 
 ```{r, echo=FALSE}
 # x

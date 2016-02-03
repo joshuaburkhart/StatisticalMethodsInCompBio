@@ -1,0 +1,184 @@
+---
+title: "StatMethodsHW3B"
+author: "Joshua Burkhart"
+date: "February 3, 2016"
+output: 
+  pdf_document: 
+    fig_width: 9
+    fig_height: 6
+    latex_engine: xelatex
+---
+# BMI 651: HW3 B
+
+```{r global_options, echo=FALSE, include=FALSE, error=FALSE}
+knitr::opts_chunk$set(fig.path = "Figs/",
+                      message = FALSE,
+                      warning = FALSE,
+                      include = TRUE,
+                      echo = TRUE,
+                      error = TRUE,
+                      fig.width = 11,
+                      comment = NA)
+```
+
+```{r, echo=FALSE, include=FALSE}
+library(MASS)
+library(plyr) #this must be loaded before dplyr 
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(knitr)
+library(magrittr)
+library(reshape2)
+library(infotheo)
+library(stats)
+library(ggbiplot)
+library(car)
+library("Hiiragi2013")
+set.seed(2013) #does this need to be set to 2013? why?
+```
+  
+### Load Data
+  
+```{r}
+data("x")
+data("xq")
+
+#feature candidates
+hw3A.x.genotypes <- x@phenoData@data$genotype
+hw3A.x.probe_intensities <- data.frame(assayDataElement(x@assayData,'exprs'))
+hw3A.xq.cell_type <- xq@phenoData@data$Cell.type
+hw3A.xq.gene_expressions <- data.frame(assayDataElement(xq@assayData,'exprs'))
+
+#classes
+hw3A.x.classes <- x@phenoData@data$Embryonic.day
+hw3A.xq.classes <- xq@phenoData@data$Embryonic.day
+```
+
+### Scan for missing Data
+
+```{r}
+sum(is.na(hw3A.x.genotypes))
+sum(is.na(hw3A.x.probe_intensities))
+sum(is.na(hw3A.xq.cell_type))
+sum(is.na(hw3A.xq.gene_expressions))
+
+sum(is.na(hw3A.x.classes))
+sum(is.na(hw3A.xq.classes))
+```
+
+```{r}
+t(hw3A.xq.gene_expressions) %>% summary()
+hw3A.xq.gene_expressions <- na.omit(hw3A.xq.gene_expressions)
+```
+
+### Transform positive (E3.25) and negative (E3.5 and E4.5) values 1 and 0, respectively
+
+```{r}
+hw3A.x.classes <- as.character(hw3A.x.classes)
+hw3A.x.classes[hw3A.x.classes == "E3.25"] = 1
+hw3A.x.classes[hw3A.x.classes == "E3.5"] = 0
+hw3A.x.classes[hw3A.x.classes == "E4.5"] = 0
+hw3A.x.classes <- as.factor(hw3A.x.classes)
+
+hw3A.xq.classes <- as.character(hw3A.xq.classes)
+hw3A.xq.classes[hw3A.xq.classes == "E3.25"] = 1
+hw3A.xq.classes[hw3A.xq.classes == "E3.5"] = 0
+hw3A.xq.classes[hw3A.xq.classes == "E4.5"] = 0
+hw3A.xq.classes <- as.factor(hw3A.xq.classes)
+```
+
+### Combine Features for x and xq datasets
+
+```{r}
+hw3A.x.features <- rbind(hw3A.x.genotypes,hw3A.x.probe_intensities)
+hw3A.xq.features <- rbind(as.factor(hw3A.xq.cell_type),hw3A.xq.gene_expressions)
+```
+
+### Split into Training & Test sets
+
+```{r}
+# x
+index <- sample(1:ncol(hw3A.x.features),round(0.8*ncol(hw3A.x.features)))
+hw3A.x.features_train <- hw3A.x.features[,index]
+hw3A.x.classes_train <- hw3A.x.classes[index]
+hw3A.x.features_test <- hw3A.x.features[,-index]
+hw3A.x.classes_test <- hw3A.x.classes[-index]
+
+# xq
+index <- sample(1:ncol(hw3A.xq.features),round(0.8*ncol(hw3A.xq.features)))
+hw3A.xq.features_train <- hw3A.xq.features[,index]
+hw3A.xq.classes_train <- hw3A.xq.classes[index]
+hw3A.xq.features_test <- hw3A.xq.features[,-index]
+hw3A.xq.classes_test <- hw3A.xq.classes[-index]
+```
+
+### Z-score training set
+
+```{r}
+# x
+x.train_sd = matrix()
+x.train_mean = matrix()
+hw3A.x.features_train_normalized <- hw3A.x.features_train
+for(i in 2:nrow(hw3A.x.features_train)) # each row is a feature, first is a factor (genotype)
+  x.train_sd[i] = sd(hw3A.x.features_train[i,])
+  x.train_mean[i] = apply(hw3A.x.features_train[i,],1,mean)
+  for(j in 1:ncol(hw3A.x.features_train)) # each column is a sample
+    hw3A.x.features_train_normalized[i,j] =
+    (hw3A.x.features_train[i,j] - x.train_mean[i]) / x.train_sd[i]
+
+# xq  
+xq.train_sd = matrix()
+xq.train_mean = matrix()
+hw3A.xq.features_train_normalized <- hw3A.xq.features_train
+for(i in 2:nrow(hw3A.xq.features_train)) # each row is a feature, first is a factor (cell_type)
+  xq.train_sd[i] = sd(hw3A.xq.features_train[i,])
+  xq.train_mean[i] = apply(hw3A.xq.features_train[i,],1,mean)
+  for(j in 1:ncol(hw3A.xq.features_train)) # each column is a sample
+    hw3A.xq.features_train_normalized[i,j] =
+    (hw3A.xq.features_train[i,j] - xq.train_mean[i]) / xq.train_sd[i]
+```
+
+> With our datasets now split and Z scored, we are now ready to move on to feature selection (in the next assignment).
+
+## Feature Selection (Part B)
+
+### Wilcoxan Rank Sum
+
+> First we'll attempt to reduce our prospective features using the wilcoxan rank sum test and a p-value limit of 0.01. We'll store the indices of the features we discover so we can filter any new test data in the same way.
+
+```{r}
+P_LIM = 0.01
+x.train_w_idx = vector()
+xq.train_w_idx = vector()
+
+if(FALSE){ # takes too long.. skip this for now
+#x
+for (i in 1:nrow(hw3A.x.features_train_normalized)){
+  x.w <- wilcox.test(unlist(hw3A.x.features_train_normalized[i,]) ~ hw3A.x.classes_train,
+                     data = hw3A.x.features_train_normalized)
+  if(x.w$p.value < P_LIM)
+    x.train_w_idx <- append(x.train_w_idx,i) #store indices of significant features
+  print(x.train_w_idx %>% length())
+}
+  
+}
+
+#xq
+for (i in 1:nrow(hw3A.xq.features_train_normalized)){
+  xq.w <- wilcox.test(unlist(hw3A.xq.features_train_normalized[i,]) ~ hw3A.xq.classes_train,
+                     data = hw3A.xq.features_train_normalized)
+  if(xq.w$p.value < P_LIM)
+    xq.train_w_idx <- append(xq.train_w_idx,i) #store indices of significant features
+  print(xq.train_w_idx %>% length())
+}
+```
+
+## References
+
+> [1] http://www.r-bloggers.com/fitting-a-neural-network-in-r-neuralnet-package/  
+  [2] http://stats.stackexchange.com/questions/121522/how-to-transform-test-set-to-the-pca-space-of-the-training-set-if-the-features  
+  [3] https://support.bioconductor.org/p/40730/  
+  [4] https://bioconductor.org/packages/release/data/experiment/manuals/Hiiragi2013/man/Hiiragi2013.pdf  
+  [5] http://127.0.0.1:17064/library/Hiiragi2013/doc/Hiiragi2013.pdf  
+  [6] http://www.rdatamining.com/examples/decision-tree  
