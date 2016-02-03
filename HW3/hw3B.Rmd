@@ -161,7 +161,6 @@ for (i in 1:nrow(hw3A.x.features_train_normalized)){
     x.train_w_idx <- append(x.train_w_idx,i) #store indices of significant features
   print(x.train_w_idx %>% length())
 }
-  
 }
 
 #xq
@@ -172,13 +171,32 @@ for (i in 1:nrow(hw3A.xq.features_train_normalized)){
     xq.train_w_idx <- append(xq.train_w_idx,i) #store indices of significant features
   print(xq.train_w_idx %>% length())
 }
+
+#now we can access our selected columns with
+#> hw3A.xq.features_train_normalized[xq.train_w_idx,]
 ```
+
+### Markov Blanket Construction
+
+```{r}
+library(bnlearn)
+library(Rgraphviz)
+# Unfortunately, we'll have to sloppily transpose our df for this
+bn.hc <- hc(data.frame(t(hw3A.xq.features_train_normalized[xq.train_w_idx,])))
+bn.gs <- gs(data.frame(t(hw3A.xq.features_train_normalized[xq.train_w_idx,])))
+bn.fast.iamb <- fast.iamb(data.frame(t(hw3A.xq.features_train_normalized[xq.train_w_idx,])))
+par(mfrow = c(1,3))
+graphviz.plot(bn.hc)
+graphviz.plot(bn.gs)
+graphviz.plot(bn.fast.iamb)
+```
+
+### Network Analysis & Mining
+
+> work through [3] 5.3. Network analysis and manipulation
 
 ## References
 
-> [1] http://www.r-bloggers.com/fitting-a-neural-network-in-r-neuralnet-package/  
-  [2] http://stats.stackexchange.com/questions/121522/how-to-transform-test-set-to-the-pca-space-of-the-training-set-if-the-features  
-  [3] https://support.bioconductor.org/p/40730/  
-  [4] https://bioconductor.org/packages/release/data/experiment/manuals/Hiiragi2013/man/Hiiragi2013.pdf  
-  [5] http://127.0.0.1:17064/library/Hiiragi2013/doc/Hiiragi2013.pdf  
-  [6] http://www.rdatamining.com/examples/decision-tree  
+> [1] http://www.ats.ucla.edu/stat/r/faq/subset_R.htm
+  [2] http://r-statistics.co/Statistical-Tests-in-R.html
+  [3] http://arxiv.org/pdf/0908.3817.pdf
