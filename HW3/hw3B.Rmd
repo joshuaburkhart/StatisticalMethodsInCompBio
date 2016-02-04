@@ -141,9 +141,9 @@ for(i in 2:nrow(hw3A.xq.features_train)) # each row is a feature, first is a fac
 
 > With our datasets now split and Z scored, we are now ready to move on to feature selection (in the next assignment).
 
-## Feature Selection (Part B)
+## Feature Selection
 
-### Wilcoxan Rank Sum
+### Wilcoxan Rank Sum (Conventional Filter)
 
 > First we'll attempt to reduce our prospective features using the wilcoxan rank sum test and a p-value limit of 0.01. We'll store the indices of the features we discover so we can filter any new test data in the same way.
 
@@ -152,7 +152,6 @@ P_LIM = 0.01
 x.train_w_idx = vector()
 xq.train_w_idx = vector()
 
-if(FALSE){ # takes too long.. skip this for now
 #x
 for (i in 1:nrow(hw3A.x.features_train_normalized)){
   x.w <- wilcox.test(unlist(hw3A.x.features_train_normalized[i,]) ~ hw3A.x.classes_train,
@@ -160,7 +159,6 @@ for (i in 1:nrow(hw3A.x.features_train_normalized)){
   if(x.w$p.value < P_LIM)
     x.train_w_idx <- append(x.train_w_idx,i) #store indices of significant features
   print(x.train_w_idx %>% length())
-}
 }
 
 #xq
@@ -172,31 +170,43 @@ for (i in 1:nrow(hw3A.xq.features_train_normalized)){
   print(xq.train_w_idx %>% length())
 }
 
-#now we can access our selected columns with
-#> hw3A.xq.features_train_normalized[xq.train_w_idx,]
+#now we can retain only our selected columns
+hw3A.xq.features_train_normalized_w <- hw3A.xq.features_train_normalized[xq.train_w_idx,]
 ```
 
-### Markov Blanket Construction
+### Bayesian Net Construction
 
 ```{r}
 library(bnlearn)
 library(Rgraphviz)
-# Unfortunately, we'll have to sloppily transpose our df for this
-bn.hc <- hc(data.frame(t(hw3A.xq.features_train_normalized[xq.train_w_idx,])))
-bn.gs <- gs(data.frame(t(hw3A.xq.features_train_normalized[xq.train_w_idx,])))
-bn.fast.iamb <- fast.iamb(data.frame(t(hw3A.xq.features_train_normalized[xq.train_w_idx,])))
+
+#add the class labels to the feature data frame
+hw3A.xq.net_input <- data.frame(t(hw3A.xq.features_train_normalized_w))
+
+hw3A.xq.net_input["class"] <- hw3A.xq.classes_train
+
+# Unfortunately, we'll have to sloppily transpose and recast our df for this
+bn.hc <- hc(hw3A.xq.net_input)
+bn.fast.iamb <- fast.iamb(hw3A.xq.net_input)
 par(mfrow = c(1,3))
 graphviz.plot(bn.hc)
-graphviz.plot(bn.gs)
 graphviz.plot(bn.fast.iamb)
 ```
 
-### Network Analysis & Mining
+### Markov Blanket Filter
 
-> work through [3] 5.3. Network analysis and manipulation
+```{r}
+mhc <- mb(bn.hc,node="class")
+mfi <- mb(bn.fast.iamb,node="class")
+
+#use the features common between the greedy hill-climbing and fast iamb blankets
+intersect(mhc,mfi)
+```
 
 ## References
 
 > [1] http://www.ats.ucla.edu/stat/r/faq/subset_R.htm
   [2] http://r-statistics.co/Statistical-Tests-in-R.html
   [3] http://arxiv.org/pdf/0908.3817.pdf
+  [4] http://www.iaeng.org/publication/WCE2010/WCE2010_pp321-328.pdf
+  [5] http://ai.stanford.edu/~koller/Papers/Koller+Sahami:ICML96.pdf
