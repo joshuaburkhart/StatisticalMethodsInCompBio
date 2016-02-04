@@ -45,72 +45,72 @@ data("x")
 data("xq")
 
 #feature candidates
-hw3A.x.genotypes <- x@phenoData@data$genotype
-hw3A.x.probe_intensities <- data.frame(assayDataElement(x@assayData,'exprs'))
-hw3A.xq.cell_type <- xq@phenoData@data$Cell.type
-hw3A.xq.gene_expressions <- data.frame(assayDataElement(xq@assayData,'exprs'))
+hw3B.x.genotypes <- x@phenoData@data$genotype
+hw3B.x.probe_intensities <- data.frame(assayDataElement(x@assayData,'exprs'))
+hw3B.xq.cell_type <- xq@phenoData@data$Cell.type
+hw3B.xq.gene_expressions <- data.frame(assayDataElement(xq@assayData,'exprs'))
 
 #classes
-hw3A.x.classes <- x@phenoData@data$Embryonic.day
-hw3A.xq.classes <- xq@phenoData@data$Embryonic.day
+hw3B.x.classes <- x@phenoData@data$Embryonic.day
+hw3B.xq.classes <- xq@phenoData@data$Embryonic.day
 ```
 
 ### Scan for missing Data
 
 ```{r}
-sum(is.na(hw3A.x.genotypes))
-sum(is.na(hw3A.x.probe_intensities))
-sum(is.na(hw3A.xq.cell_type))
-sum(is.na(hw3A.xq.gene_expressions))
+sum(is.na(hw3B.x.genotypes))
+sum(is.na(hw3B.x.probe_intensities))
+sum(is.na(hw3B.xq.cell_type))
+sum(is.na(hw3B.xq.gene_expressions))
 
-sum(is.na(hw3A.x.classes))
-sum(is.na(hw3A.xq.classes))
+sum(is.na(hw3B.x.classes))
+sum(is.na(hw3B.xq.classes))
 ```
 
 ```{r}
-t(hw3A.xq.gene_expressions) %>% summary()
-hw3A.xq.gene_expressions <- na.omit(hw3A.xq.gene_expressions)
+t(hw3B.xq.gene_expressions) %>% summary()
+hw3B.xq.gene_expressions <- na.omit(hw3B.xq.gene_expressions)
 ```
 
 ### Transform positive (E3.25) and negative (E3.5 and E4.5) values 1 and 0, respectively
 
 ```{r}
-hw3A.x.classes <- as.character(hw3A.x.classes)
-hw3A.x.classes[hw3A.x.classes == "E3.25"] = 1
-hw3A.x.classes[hw3A.x.classes == "E3.5"] = 0
-hw3A.x.classes[hw3A.x.classes == "E4.5"] = 0
-hw3A.x.classes <- as.factor(hw3A.x.classes)
+hw3B.x.classes <- as.character(hw3B.x.classes)
+hw3B.x.classes[hw3B.x.classes == "E3.25"] = 1
+hw3B.x.classes[hw3B.x.classes == "E3.5"] = 0
+hw3B.x.classes[hw3B.x.classes == "E4.5"] = 0
+hw3B.x.classes <- as.factor(hw3B.x.classes)
 
-hw3A.xq.classes <- as.character(hw3A.xq.classes)
-hw3A.xq.classes[hw3A.xq.classes == "E3.25"] = 1
-hw3A.xq.classes[hw3A.xq.classes == "E3.5"] = 0
-hw3A.xq.classes[hw3A.xq.classes == "E4.5"] = 0
-hw3A.xq.classes <- as.factor(hw3A.xq.classes)
+hw3B.xq.classes <- as.character(hw3B.xq.classes)
+hw3B.xq.classes[hw3B.xq.classes == "E3.25"] = 1
+hw3B.xq.classes[hw3B.xq.classes == "E3.5"] = 0
+hw3B.xq.classes[hw3B.xq.classes == "E4.5"] = 0
+hw3B.xq.classes <- as.factor(hw3B.xq.classes)
 ```
 
 ### Combine Features for x and xq datasets
 
 ```{r}
-hw3A.x.features <- rbind(hw3A.x.genotypes,hw3A.x.probe_intensities)
-hw3A.xq.features <- rbind(as.factor(hw3A.xq.cell_type),hw3A.xq.gene_expressions)
+hw3B.x.features <- rbind(hw3B.x.genotypes,hw3B.x.probe_intensities)
+hw3B.xq.features <- rbind(as.factor(hw3B.xq.cell_type),hw3B.xq.gene_expressions)
 ```
 
 ### Split into Training & Test sets
 
 ```{r}
 # x
-index <- sample(1:ncol(hw3A.x.features),round(0.8*ncol(hw3A.x.features)))
-hw3A.x.features_train <- hw3A.x.features[,index]
-hw3A.x.classes_train <- hw3A.x.classes[index]
-hw3A.x.features_test <- hw3A.x.features[,-index]
-hw3A.x.classes_test <- hw3A.x.classes[-index]
+index <- sample(1:ncol(hw3B.x.features),round(0.8*ncol(hw3B.x.features)))
+hw3B.x.features_train <- hw3B.x.features[,index]
+hw3B.x.classes_train <- hw3B.x.classes[index]
+hw3B.x.features_test <- hw3B.x.features[,-index]
+hw3B.x.classes_test <- hw3B.x.classes[-index]
 
 # xq
-index <- sample(1:ncol(hw3A.xq.features),round(0.8*ncol(hw3A.xq.features)))
-hw3A.xq.features_train <- hw3A.xq.features[,index]
-hw3A.xq.classes_train <- hw3A.xq.classes[index]
-hw3A.xq.features_test <- hw3A.xq.features[,-index]
-hw3A.xq.classes_test <- hw3A.xq.classes[-index]
+index <- sample(1:ncol(hw3B.xq.features),round(0.8*ncol(hw3B.xq.features)))
+hw3B.xq.features_train <- hw3B.xq.features[,index]
+hw3B.xq.classes_train <- hw3B.xq.classes[index]
+hw3B.xq.features_test <- hw3B.xq.features[,-index]
+hw3B.xq.classes_test <- hw3B.xq.classes[-index]
 ```
 
 ### Z-score training set
@@ -119,24 +119,24 @@ hw3A.xq.classes_test <- hw3A.xq.classes[-index]
 # x
 x.train_sd = matrix()
 x.train_mean = matrix()
-hw3A.x.features_train_normalized <- hw3A.x.features_train
-for(i in 2:nrow(hw3A.x.features_train)) # each row is a feature, first is a factor (genotype)
-  x.train_sd[i] = sd(hw3A.x.features_train[i,])
-  x.train_mean[i] = apply(hw3A.x.features_train[i,],1,mean)
-  for(j in 1:ncol(hw3A.x.features_train)) # each column is a sample
-    hw3A.x.features_train_normalized[i,j] =
-    (hw3A.x.features_train[i,j] - x.train_mean[i]) / x.train_sd[i]
+hw3B.x.features_train_normalized <- hw3B.x.features_train
+for(i in 2:nrow(hw3B.x.features_train)) # each row is a feature, first is a factor (genotype)
+  x.train_sd[i] = sd(hw3B.x.features_train[i,])
+  x.train_mean[i] = apply(hw3B.x.features_train[i,],1,mean)
+  for(j in 1:ncol(hw3B.x.features_train)) # each column is a sample
+    hw3B.x.features_train_normalized[i,j] =
+    (hw3B.x.features_train[i,j] - x.train_mean[i]) / x.train_sd[i]
 
 # xq  
 xq.train_sd = matrix()
 xq.train_mean = matrix()
-hw3A.xq.features_train_normalized <- hw3A.xq.features_train
-for(i in 2:nrow(hw3A.xq.features_train)) # each row is a feature, first is a factor (cell_type)
-  xq.train_sd[i] = sd(hw3A.xq.features_train[i,])
-  xq.train_mean[i] = apply(hw3A.xq.features_train[i,],1,mean)
-  for(j in 1:ncol(hw3A.xq.features_train)) # each column is a sample
-    hw3A.xq.features_train_normalized[i,j] =
-    (hw3A.xq.features_train[i,j] - xq.train_mean[i]) / xq.train_sd[i]
+hw3B.xq.features_train_normalized <- hw3B.xq.features_train
+for(i in 2:nrow(hw3B.xq.features_train)) # each row is a feature, first is a factor (cell_type)
+  xq.train_sd[i] = sd(hw3B.xq.features_train[i,])
+  xq.train_mean[i] = apply(hw3B.xq.features_train[i,],1,mean)
+  for(j in 1:ncol(hw3B.xq.features_train)) # each column is a sample
+    hw3B.xq.features_train_normalized[i,j] =
+    (hw3B.xq.features_train[i,j] - xq.train_mean[i]) / xq.train_sd[i]
 ```
 
 > With our datasets now split and Z scored, we are now ready to move on to feature selection (in the next assignment).
@@ -145,33 +145,38 @@ for(i in 2:nrow(hw3A.xq.features_train)) # each row is a feature, first is a fac
 
 ### Wilcoxan Rank Sum (Conventional Filter)
 
-> First we'll attempt to reduce our prospective features using the wilcoxan rank sum test and a p-value limit of 0.01. We'll store the indices of the features we discover so we can filter any new test data in the same way.
+> First we'll attempt to reduce our prospective features using the wilcoxan rank sum test and a p-value limit of 0.05 for the xq dataset and 0.0001 for the x dataset. We'll store the indices of the features we discover so we can filter any new test data in the same way.
 
 ```{r}
-P_LIM = 0.01
+xq.P_LIM = 0.05
+x.P_LIM = 0.00000001
 x.train_w_idx = vector()
 xq.train_w_idx = vector()
 
 #x
-for (i in 1:nrow(hw3A.x.features_train_normalized)){
-  x.w <- wilcox.test(unlist(hw3A.x.features_train_normalized[i,]) ~ hw3A.x.classes_train,
-                     data = hw3A.x.features_train_normalized)
-  if(x.w$p.value < P_LIM)
+for (i in 1:nrow(hw3B.x.features_train_normalized)){
+  x.w <- wilcox.test(unlist(hw3B.x.features_train_normalized[i,]) ~ hw3B.x.classes_train,
+                     data = hw3B.x.features_train_normalized)
+  if(x.w$p.value < x.P_LIM)
     x.train_w_idx <- append(x.train_w_idx,i) #store indices of significant features
-  print(x.train_w_idx %>% length())
+  #print(x.train_w_idx %>% length()) debugging
 }
+print(x.train_w_idx %>% length())
 
 #xq
-for (i in 1:nrow(hw3A.xq.features_train_normalized)){
-  xq.w <- wilcox.test(unlist(hw3A.xq.features_train_normalized[i,]) ~ hw3A.xq.classes_train,
-                     data = hw3A.xq.features_train_normalized)
-  if(xq.w$p.value < P_LIM)
+for (i in 1:nrow(hw3B.xq.features_train_normalized)){
+  xq.w <- wilcox.test(unlist(hw3B.xq.features_train_normalized[i,]) ~ hw3B.xq.classes_train,
+                     data = hw3B.xq.features_train_normalized)
+  if(xq.w$p.value < xq.P_LIM)
     xq.train_w_idx <- append(xq.train_w_idx,i) #store indices of significant features
-  print(xq.train_w_idx %>% length())
+  #print(xq.train_w_idx %>% length()) debugging 
 }
+print(xq.train_w_idx %>% length())
 
 #now we can retain only our selected columns
-hw3A.xq.features_train_normalized_w <- hw3A.xq.features_train_normalized[xq.train_w_idx,]
+hw3B.xq.features_train_normalized_w <- hw3B.xq.features_train_normalized[xq.train_w_idx,]
+hw3B.x.features_train_normalized_w <- hw3B.x.features_train_normalized[x.train_w_idx,]
+
 ```
 
 ### Bayesian Net Construction
@@ -181,26 +186,39 @@ library(bnlearn)
 library(Rgraphviz)
 
 #add the class labels to the feature data frame
-hw3A.xq.net_input <- data.frame(t(hw3A.xq.features_train_normalized_w))
+hw3B.xq.net_input <- data.frame(t(hw3B.xq.features_train_normalized_w))
+hw3B.x.net_input <- data.frame(t(hw3B.x.features_train_normalized_w))
 
-hw3A.xq.net_input["class"] <- hw3A.xq.classes_train
+hw3B.xq.net_input["class"] <- hw3B.xq.classes_train
+hw3B.x.net_input["class"] <- hw3B.x.classes_train
 
 # Unfortunately, we'll have to sloppily transpose and recast our df for this
-bn.hc <- hc(hw3A.xq.net_input)
-bn.fast.iamb <- fast.iamb(hw3A.xq.net_input)
-par(mfrow = c(1,3))
-graphviz.plot(bn.hc)
-graphviz.plot(bn.fast.iamb)
+bn.xq.hc <- hc(hw3B.xq.net_input)
+bn.xq.fast.iamb <- fast.iamb(hw3B.xq.net_input)
+bn.x.hc <- hc(hw3B.x.net_input)
+# takes too long
+#bn.x.fast.iamb <- fast.iamb(hw3B.x.net_input)
+```
+
+```{r}
+# only show xq because x net is too big
+par(mfrow = c(1,2))
+graphviz.plot(bn.xq.hc)
+graphviz.plot(bn.xq.fast.iamb)
 ```
 
 ### Markov Blanket Filter
 
 ```{r}
-mhc <- mb(bn.hc,node="class")
-mfi <- mb(bn.fast.iamb,node="class")
+xq.mhc <- mb(bn.xq.hc,node="class")
+xq.mfi <- mb(bn.xq.fast.iamb,node="class")
+x.mhc <- mb(bn.x.hc,node="class")
+# takes too long
+#x.mfi <- mb(bn.x.fast.iamb,node="class")
 
 #use the features common between the greedy hill-climbing and fast iamb blankets
-intersect(mhc,mfi)
+xq.i <- intersect(xq.mhc,xq.mfi)
+x.i <- x.mhc #intersect(x.mhc,x.mfi)
 ```
 
 ## References
