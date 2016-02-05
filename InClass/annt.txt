@@ -1,0 +1,11 @@
+Cels	short.names	Donor	Age	Gender	DT	estb.same
+AG_05414_AS.cel	AG_05414	Hsa	73	M	2.3	D
+AG_11745_AS.cel	AG_11745	Hsa	43	F	1.8	D
+AG_13927_AS.cel	AG_13927	Hsa	45	F	2.8	-
+KB_5047_2070_2_AS.CEL	KB_5047	Ggo	19	F	2	-
+KB_5275_2_AS.CEL	KB_5275	Ppa	2	M	2.4	-
+KB_5828_AS.cel	KB_5828	Ppa	12	M	2.7	-
+KB_6268_2_AS.cel	KB_6268	Ggo	19	F	2	-
+KB_8025_AS.cel	KB_8025	Ppa	19	M	2	-
+KB_8840_AS.cel	KB_8840	Ggo	2	F	2.5	-
+					
