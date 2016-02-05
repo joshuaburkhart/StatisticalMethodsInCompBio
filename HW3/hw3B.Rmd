@@ -243,10 +243,13 @@ library(e1071)
 hw3B.xq.svm_input <- data.frame(t(hw3B.xq.features_train_normalized_w))
 
 #train model
-x.model <- svm(hw3B.xq.svm_input,hw3B.xq.classes_train,kernel="linear")
+xq.model <- svm(hw3B.xq.svm_input,hw3B.xq.classes_train,kernel="linear")
 
 #check accuracy (on data we just trained on)
-table(predict(x.model,hw3B.xq.svm_input),hw3B.xq.classes_train)
+xq.class_ag <- table(predict(xq.model,hw3B.xq.svm_input),hw3B.xq.classes_train) %>%
+  classAgreement()
+
+print(1 - xq.class_ag$diag) #misclassification rate
 
 #check accuracy (on hold out data)
 #normalize
