@@ -143,9 +143,9 @@ for(i in 2:nrow(hw3B.xq.features_train)) # each row is a feature, first is a fac
 
 ## Feature Selection
 
-### Wilcoxan Rank Sum (Conventional Filter)
+### Wilcoxan Rank Sum (Univariate Nonparametric Filter)
 
-> First we'll attempt to reduce our prospective features using the wilcoxan rank sum test and a p-value limit of 0.05 for the xq dataset and 0.0001 for the x dataset. We'll store the indices of the features we discover so we can filter any new test data in the same way.
+> First we'll attempt to reduce our prospective features using the wilcoxan rank sum test and a p-value limit of 0.05 for the xq dataset and 0.0001 for the x dataset. We'll store the indices of the features we discover so we can filter any new test data in the same way. The test will retain features whose values for one class are greater or less than those of the other (judged by rank and regardless of distribution).
 
 ```{r}
 xq.P_LIM = 0.05
@@ -177,22 +177,35 @@ print(xq.train_w_idx %>% length())
 hw3B.xq.features_train_normalized_w <- hw3B.xq.features_train_normalized[xq.train_w_idx,]
 hw3B.x.features_train_normalized_w <- hw3B.x.features_train_normalized[x.train_w_idx,]
 
-```
-
-### Bayesian Net Construction
-
-```{r}
-library(bnlearn)
-library(Rgraphviz)
-
 #add the class labels to the feature data frame
 hw3B.xq.net_input <- data.frame(t(hw3B.xq.features_train_normalized_w))
 hw3B.x.net_input <- data.frame(t(hw3B.x.features_train_normalized_w))
 
 hw3B.xq.net_input["class"] <- hw3B.xq.classes_train
 hw3B.x.net_input["class"] <- hw3B.x.classes_train
+```
 
-# Unfortunately, we'll have to sloppily transpose and recast our df for this
+### Linear Fit (Univariate Parametric Filter)
+
+```{r}
+design= model.matrix(hw3B.xq.classes_train)
+fit <- lmFit(hw3B.xq.features_train_normalized,hw3B.xq.classes_train)
+fit <- eBayes(fit)
+topTable(fit,coef=2)
+
+limmaRes = topTable(fit,coef=2,  p.value=0.05, number=500)
+print(nrow(limmaRes))
+
+x.ilen <- intersect(limmaRes %>% rownames(),hw3B.xq.net_input %>% colnames()) %>% length()
+print(x.ilen / limmaRes %>% nrow())
+```
+
+### Bayesian Net Construction (Multivariate Nonparametric Filter)
+
+```{r}
+library(bnlearn)
+library(Rgraphviz)
+
 bn.xq.hc <- hc(hw3B.xq.net_input)
 bn.xq.fast.iamb <- fast.iamb(hw3B.xq.net_input)
 bn.x.hc <- hc(hw3B.x.net_input)
@@ -219,6 +232,26 @@ x.mhc <- mb(bn.x.hc,node="class")
 #use the features common between the greedy hill-climbing and fast iamb blankets
 xq.i <- intersect(xq.mhc,xq.mfi)
 x.i <- x.mhc #intersect(x.mhc,x.mfi)
+```
+
+### SVM
+
+```{r}
+library(e1071)
+
+#change to markov blanket features
+hw3B.xq.svm_input <- data.frame(t(hw3B.xq.features_train_normalized_w))
+
+#train model
+x.model <- svm(hw3B.xq.svm_input,hw3B.xq.classes_train,kernel="linear")
+
+#check accuracy (on data we just trained on)
+table(predict(x.model,hw3B.xq.svm_input),hw3B.xq.classes_train)
+
+#check accuracy (on hold out data)
+#normalize
+#filter features
+#test
 ```
 
 ## References
