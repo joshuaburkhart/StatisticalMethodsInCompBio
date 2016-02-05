@@ -1,11 +1,15 @@
 #A. Change working directory to where the lab files are located. Depending on what you have installed, you may need to add additional packages here.
 
+if(FALSE){
 source("http://www.bioconductor.org/biocLite.R")
 biocLite("siggenes")
 biocLite("RankProd")
 biocLite("limma")
 biocLite("fibroEset")
 biocLite("made4")
+biocLite("annaffy")
+biocLite("hgu95av2.db")
+}
 
 require(affy)
 require(annaffy)
@@ -14,9 +18,9 @@ require(made4)
 
 
 # B. Load data and examine annotation 
-data.vsn<- read.csv("data.vsn.csv", as.is=TRUE, row.names=1)
+data.vsn<- read.csv("/Users/joshuaburkhart/SoftwareProjects/StatisticalMethodsInCompBio/InClass/data.vsn.csv", as.is=TRUE, row.names=1)
 dim(data.vsn)
-annt<-read.table("annt.txt", header=TRUE)
+annt<-read.table("/Users/joshuaburkhart/SoftwareProjects/StatisticalMethodsInCompBio/InClass/annt.txt", header=TRUE)
 annt[1:2,]
 
 annt$Donor
