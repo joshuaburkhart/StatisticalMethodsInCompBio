@@ -3,10 +3,10 @@ title: "StatMethodsHW3B"
 author: "Joshua Burkhart"
 date: "February 3, 2016"
 output: 
-  pdf_document: 
-    fig_width: 9
-    fig_height: 6
-    latex_engine: xelatex
+pdf_document: 
+fig_width: 9
+fig_height: 6
+latex_engine: xelatex
 ---
 # BMI 651: HW3 B
 
@@ -40,9 +40,9 @@ library(Rgraphviz)
 library("Hiiragi2013")
 set.seed(2013) #does this need to be set to 2013? why?
 ```
-  
+
 ### Load Data
-  
+
 ```{r}
 data("x")
 data("xq")
@@ -122,16 +122,23 @@ hw3B.xq.classes_test <- hw3B.xq.classes[-index]
 ### Cross Validation Loop
 
 ```{r}
-cv_result = matrix() # need a matrix for storing our cv loop result
-#Columns for cv_result: [error rate, feature indices, feature means, features sds, svm, markov blanket]
+# matrices for storing our cv loop result
+#          0          1            2                       3                      4         5
+#Columns: [feat. sds, feat. means, pct. lm feat. retained, mrkv. blanket indices, err rate, svm]
+x.cv_result = matrix()
+xq.cv_result = matrix()
+
+#set a large initial error rate and minimize
+x.cv_result[4] <- Inf
+xq.cv_result[4] <- Inf
 
 for(cv_idx in seq(1:10)){
-
+  
   ### Split Training & Validation sets with random sampling (Monte Carlo cross validation)
   
   # x
   index <-
-  sample(1:ncol(hw3B.x.features_train),round(0.9 * ncol(hw3B.x.features_train)))
+    sample(1:ncol(hw3B.x.features_train),round(0.9 * ncol(hw3B.x.features_train)))
   hw3B.x.features_train <- hw3B.x.features_train[,index]
   hw3B.x.classes_train <- hw3B.x.classes_train[index]
   hw3B.x.features_validation <- hw3B.x.features_train[,-index]
@@ -139,85 +146,85 @@ for(cv_idx in seq(1:10)){
   
   # xq
   index <-
-  sample(1:ncol(hw3B.xq.features_train),round(0.9 * ncol(hw3B.xq.features_train)))
+    sample(1:ncol(hw3B.xq.features_train),round(0.9 * ncol(hw3B.xq.features_train)))
   hw3B.xq.features_train <- hw3B.xq.features_train[,index]
   hw3B.xq.classes_train <- hw3B.xq.classes_train[index]
   hw3B.xq.features_validation <- hw3B.xq.features_train[,-index]
   hw3B.xq.classes_validation <- hw3B.xq.classes_train[-index]
   
-  ### Z-score training set
+  ### Z score training set
   
   # x
   x.train_sd = matrix()
   x.train_mean = matrix()
   hw3B.x.features_train_normalized <- hw3B.x.features_train
-  for (i in 2:nrow(hw3B.x.features_train))
-  # each row is a feature, first is a factor (genotype)
-  x.train_sd[i] = sd(hw3B.x.features_train[i,])
-  x.train_mean[i] = apply(hw3B.x.features_train[i,],1,mean)
-  for (j in 1:ncol(hw3B.x.features_train))
-  # each column is a sample
-  hw3B.x.features_train_normalized[i,j] =
-  (hw3B.x.features_train[i,j] - x.train_mean[i]) / x.train_sd[i]
+  for (i in 2:nrow(hw3B.x.features_train)){
+    # each row is a feature, first is a factor (genotype)
+    x.train_sd[i] = sd(hw3B.x.features_train[i,])
+    x.train_mean[i] = apply(hw3B.x.features_train[i,],1,mean)
+    for (j in 1:ncol(hw3B.x.features_train)){
+      # each column is a sample
+      hw3B.x.features_train_normalized[i,j] =
+        (hw3B.x.features_train[i,j] - x.train_mean[i]) / x.train_sd[i]
+    }
+  }
   
   # xq
   xq.train_sd = matrix()
   xq.train_mean = matrix()
   hw3B.xq.features_train_normalized <- hw3B.xq.features_train
-  for (i in 2:nrow(hw3B.xq.features_train))
-  # each row is a feature, first is a factor (cell_type)
-  xq.train_sd[i] = sd(hw3B.xq.features_train[i,])
-  xq.train_mean[i] = apply(hw3B.xq.features_train[i,],1,mean)
-  for (j in 1:ncol(hw3B.xq.features_train))
-  # each column is a sample
-  hw3B.xq.features_train_normalized[i,j] =
-  (hw3B.xq.features_train[i,j] - xq.train_mean[i]) / xq.train_sd[i]
+  for (i in 2:nrow(hw3B.xq.features_train)){
+    # each row is a feature, first is a factor (cell_type)
+    xq.train_sd[i] = sd(hw3B.xq.features_train[i,])
+    xq.train_mean[i] = apply(hw3B.xq.features_train[i,],1,mean)
+    for (j in 1:ncol(hw3B.xq.features_train)){
+      # each column is a sample
+      hw3B.xq.features_train_normalized[i,j] =
+        (hw3B.xq.features_train[i,j] - xq.train_mean[i]) / xq.train_sd[i]
+    }
+  }
   
   ## Feature Selection
   
-  ### Wilcoxan Rank Sum (Univariate Nonparametric Filter)
+  ### Wilcoxan Rank Sum (Univariate Nonparametric Filter) for x dataset
   
   x.P_LIM = 0.00000001
   x.train_w_idx = vector()
   
   #x
   for (i in 1:nrow(hw3B.x.features_train_normalized)) {
-  x.w <-
-  wilcox.test(unlist(hw3B.x.features_train_normalized[i,]) ~ hw3B.x.classes_train,
-  data = hw3B.x.features_train_normalized)
-  if (x.w$p.value < x.P_LIM)
-  x.train_w_idx <-
-  append(x.train_w_idx,i) #store indices of significant features
-  #print(x.train_w_idx %>% length()) debugging
+    x.w <-
+      wilcox.test(unlist(hw3B.x.features_train_normalized[i,]) ~ hw3B.x.classes_train,
+                  data = hw3B.x.features_train_normalized)
+    if (x.w$p.value < x.P_LIM)
+      x.train_w_idx <-
+        append(x.train_w_idx,i) #store indices of significant features
+    #print(x.train_w_idx %>% length()) debugging
   }
-  print(x.train_w_idx %>% length())
+  #print(x.train_w_idx %>% length())
   
   #now we can retain only our selected columns
   hw3B.x.features_train_normalized_w <-
-  hw3B.x.features_train_normalized[x.train_w_idx,]
+    hw3B.x.features_train_normalized[x.train_w_idx,]
   
   #add the class labels to the feature data frame
   hw3B.xq.net_input <-
-  data.frame(t(hw3B.xq.features_train_normalized))
+    data.frame(t(hw3B.xq.features_train_normalized))
   hw3B.x.net_input <-
-  data.frame(t(hw3B.x.features_train_normalized_w))
+    data.frame(t(hw3B.x.features_train_normalized_w))
   
   hw3B.xq.net_input["class"] <- hw3B.xq.classes_train
   hw3B.x.net_input["class"] <- hw3B.x.classes_train
   
-  ### Linear Fit (Univariate Parametric Filter)
+  ### Linear Fit (Univariate Parametric Filter) for x dataset
   
-  design = model.matrix(hw3B.x.classes_train)
-  fit <- lmFit(hw3B.x.features_train_normalized,hw3B.x.classes_train)
-  fit <- eBayes(fit)
-  topTable(fit,coef = 2)
+  x.fit <- lmFit(hw3B.x.features_train_normalized,hw3B.x.classes_train)
+  x.fit <- eBayes(x.fit)
+  topTable(x.fit,coef = 2)
   
-  limmaRes = topTable(fit,coef = 2,  p.value = 0.05, number = 500)
-  print(nrow(limmaRes))
-  
+  x.limmaRes = topTable(x.fit,coef = 2,  p.value = 0.00000001, number = 500)
   x.ilen <-
-  intersect(limmaRes %>% rownames(),hw3B.x.net_input %>% colnames()) %>% length()
-  print(x.ilen / limmaRes %>% nrow())
+    intersect(x.limmaRes %>% rownames(),hw3B.x.net_input %>% colnames()) %>% length()
   
   ### Bayesian Net Construction (Multivariate Nonparametric Filter)
   
@@ -243,31 +250,80 @@ for(cv_idx in seq(1:10)){
   ### SVM
   
   #change to markov blanket features
+  hw3B.x.svm_input <-
+    data.frame(t(hw3B.x.features_train_normalized_w))
+  
   hw3B.xq.svm_input <-
-  data.frame(t(hw3B.xq.features_train_normalized_w))
+    data.frame(t(hw3B.xq.features_train_normalized))
   
   #train model
+  x.model <-
+    svm(hw3B.x.svm_input,hw3B.x.classes_train,kernel = "linear")
+  
   xq.model <-
-  svm(hw3B.xq.svm_input,hw3B.xq.classes_train,kernel = "linear")
+    svm(hw3B.xq.svm_input,hw3B.xq.classes_train,kernel = "linear")
   
-  #check accuracy (on data we just trained on)
-  xq.class_ag <-
-  table(predict(xq.model,hw3B.xq.svm_input),hw3B.xq.classes_train) %>%
-  classAgreement()
+  ### Validation (on hold out data)
+
+  #Z score validation data using previously calculated means & standard deviations
   
-  print(1 - xq.class_ag$diag) #misclassification rate
+  # x
+  hw3B.x.features_validation_normalized <- hw3B.x.features_validation
+  for (i in 2:nrow(hw3B.x.features_validation)){
+    # each row is a feature, first is a factor (genotype)
+    for (j in 1:ncol(hw3B.x.features_validation)){
+      # each column is a sample
+      hw3B.x.features_validation_normalized[i,j] =
+        (hw3B.x.features_validation[i,j] - x.train_mean[i]) / x.train_sd[i]
+    }
+  }
   
-  #check accuracy (on hold out data)
-  #normalize
+  # xq
+  hw3B.xq.features_validation_normalized <- hw3B.xq.features_validation
+  for (i in 2:nrow(hw3B.xq.features_validation)){
+    # each row is a feature, first is a factor (cell_type)
+    for (j in 1:ncol(hw3B.xq.features_validation)){
+      # each column is a sample
+      hw3B.xq.features_validation_normalized[i,j] =
+        (hw3B.xq.features_validation[i,j] - xq.train_mean[i]) / xq.train_sd[i]
+    }
+  }
+  
   #filter features
+  hw3B.x.svm_input <- base::subset(hw3B.x.features_validation_normalized,select=x.mhc)
+  hw3B.xq.svm_input <- base::subset(hw3B.xq.features_validation_normalized,select=xq.mhc)
+  
   #test
+  x.class_ag <-
+    table(predict(x.model,hw3B.x.svm_input),hw3B.x.classes_validation) %>%
+    classAgreement()
+  
+  xq.class_ag <-
+    table(predict(xq.model,hw3B.xq.svm_input),hw3B.xq.classes_validation) %>%
+    classAgreement()
+  
+  #misclassification rate
+  x.err_rate <- 1 - x.class_ag$diag
+  xq.err_rate <- 1 - xq.class_ag$diag
+  
+  if(x.err_rate < x.cv_result[4]){
+    x.cv_result[0] <- x.train_sd
+    x.cv_result[1] <- x.train_mean
+    x.cv_result[2] <- x.ilen / (x.limmaRes %>% nrow())
+    x.cv_result[3] <- x.mhc
+    x.cv_result[4] <- x.err_rate
+  }
+  
+  if(xq.err_rate < xq.cv_result[4]){
+    xq.cv_result[0] <- xq.train_sd
+    xq.cv_result[1] <- xq.train_mean
+    xq.cv_result[2] <- NA
+    xq.cv_result[3] <- xq.mhc
+    xq.cv_result[4] <- xq.err_rate
+    xq.cv_result[5] <- xq.model
+  }
 }
+
+print(x.cv_result)
+print(xq.cv_result)
 ```
-
-## References
-
-> [1] http://www.ats.ucla.edu/stat/r/faq/subset_R.htm
-  [2] http://r-statistics.co/Statistical-Tests-in-R.html
-  [3] http://arxiv.org/pdf/0908.3817.pdf
-  [4] http://www.iaeng.org/publication/WCE2010/WCE2010_pp321-328.pdf
-  [5] http://ai.stanford.edu/~koller/Papers/Koller+Sahami:ICML96.pdf

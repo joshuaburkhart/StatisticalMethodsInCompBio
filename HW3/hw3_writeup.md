@@ -73,7 +73,7 @@ write [R#] references, fill in XXX numbers, add [A#] appendix information
 
 ## References
 
-> [] Dr. Shannon McWeeney, Personal Communication, Feb. 4, 2016.
+> [] McWeeney, S., Personal Communication, Feb. 4, 2016.
 
 ## APPENDIX
 
