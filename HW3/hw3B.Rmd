@@ -34,6 +34,9 @@ library(infotheo)
 library(stats)
 library(ggbiplot)
 library(car)
+library(e1071)
+library(bnlearn)
+library(Rgraphviz)
 library("Hiiragi2013")
 set.seed(2013) #does this need to be set to 2013? why?
 ```
@@ -95,9 +98,12 @@ hw3B.x.features <- rbind(hw3B.x.genotypes,hw3B.x.probe_intensities)
 hw3B.xq.features <- rbind(as.factor(hw3B.xq.cell_type),hw3B.xq.gene_expressions)
 ```
 
-### Split into Training & Test sets
+### Training & Test Sets
 
 ```{r}
+
+### Split with random sampling
+
 # x
 index <- sample(1:ncol(hw3B.x.features),round(0.8*ncol(hw3B.x.features)))
 hw3B.x.features_train <- hw3B.x.features[,index]
@@ -113,148 +119,149 @@ hw3B.xq.features_test <- hw3B.xq.features[,-index]
 hw3B.xq.classes_test <- hw3B.xq.classes[-index]
 ```
 
-### Z-score training set
+### Cross Validation Loop
 
 ```{r}
-# x
-x.train_sd = matrix()
-x.train_mean = matrix()
-hw3B.x.features_train_normalized <- hw3B.x.features_train
-for(i in 2:nrow(hw3B.x.features_train)) # each row is a feature, first is a factor (genotype)
+cv_result = matrix() # need a matrix for storing our cv loop result
+#Columns for cv_result: [error rate, feature indices, feature means, features sds, svm, markov blanket]
+
+for(cv_idx in seq(1:10)){
+
+  ### Split Training & Validation sets with random sampling (Monte Carlo cross validation)
+  
+  # x
+  index <-
+  sample(1:ncol(hw3B.x.features_train),round(0.9 * ncol(hw3B.x.features_train)))
+  hw3B.x.features_train <- hw3B.x.features_train[,index]
+  hw3B.x.classes_train <- hw3B.x.classes_train[index]
+  hw3B.x.features_validation <- hw3B.x.features_train[,-index]
+  hw3B.x.classes_test_validation <- hw3B.x.classes_train[-index]
+  
+  # xq
+  index <-
+  sample(1:ncol(hw3B.xq.features_train),round(0.9 * ncol(hw3B.xq.features_train)))
+  hw3B.xq.features_train <- hw3B.xq.features_train[,index]
+  hw3B.xq.classes_train <- hw3B.xq.classes_train[index]
+  hw3B.xq.features_validation <- hw3B.xq.features_train[,-index]
+  hw3B.xq.classes_validation <- hw3B.xq.classes_train[-index]
+  
+  ### Z-score training set
+  
+  # x
+  x.train_sd = matrix()
+  x.train_mean = matrix()
+  hw3B.x.features_train_normalized <- hw3B.x.features_train
+  for (i in 2:nrow(hw3B.x.features_train))
+  # each row is a feature, first is a factor (genotype)
   x.train_sd[i] = sd(hw3B.x.features_train[i,])
   x.train_mean[i] = apply(hw3B.x.features_train[i,],1,mean)
-  for(j in 1:ncol(hw3B.x.features_train)) # each column is a sample
-    hw3B.x.features_train_normalized[i,j] =
-    (hw3B.x.features_train[i,j] - x.train_mean[i]) / x.train_sd[i]
-
-# xq  
-xq.train_sd = matrix()
-xq.train_mean = matrix()
-hw3B.xq.features_train_normalized <- hw3B.xq.features_train
-for(i in 2:nrow(hw3B.xq.features_train)) # each row is a feature, first is a factor (cell_type)
+  for (j in 1:ncol(hw3B.x.features_train))
+  # each column is a sample
+  hw3B.x.features_train_normalized[i,j] =
+  (hw3B.x.features_train[i,j] - x.train_mean[i]) / x.train_sd[i]
+  
+  # xq
+  xq.train_sd = matrix()
+  xq.train_mean = matrix()
+  hw3B.xq.features_train_normalized <- hw3B.xq.features_train
+  for (i in 2:nrow(hw3B.xq.features_train))
+  # each row is a feature, first is a factor (cell_type)
   xq.train_sd[i] = sd(hw3B.xq.features_train[i,])
   xq.train_mean[i] = apply(hw3B.xq.features_train[i,],1,mean)
-  for(j in 1:ncol(hw3B.xq.features_train)) # each column is a sample
-    hw3B.xq.features_train_normalized[i,j] =
-    (hw3B.xq.features_train[i,j] - xq.train_mean[i]) / xq.train_sd[i]
-```
-
-> With our datasets now split and Z scored, we are now ready to move on to feature selection (in the next assignment).
-
-## Feature Selection
-
-### Wilcoxan Rank Sum (Univariate Nonparametric Filter)
-
-> First we'll attempt to reduce our prospective features using the wilcoxan rank sum test and a p-value limit of 0.05 for the xq dataset and 0.0001 for the x dataset. We'll store the indices of the features we discover so we can filter any new test data in the same way. The test will retain features whose values for one class are greater or less than those of the other (judged by rank and regardless of distribution).
-
-```{r}
-xq.P_LIM = 0.05
-x.P_LIM = 0.00000001
-x.train_w_idx = vector()
-xq.train_w_idx = vector()
-
-#x
-for (i in 1:nrow(hw3B.x.features_train_normalized)){
-  x.w <- wilcox.test(unlist(hw3B.x.features_train_normalized[i,]) ~ hw3B.x.classes_train,
-                     data = hw3B.x.features_train_normalized)
-  if(x.w$p.value < x.P_LIM)
-    x.train_w_idx <- append(x.train_w_idx,i) #store indices of significant features
+  for (j in 1:ncol(hw3B.xq.features_train))
+  # each column is a sample
+  hw3B.xq.features_train_normalized[i,j] =
+  (hw3B.xq.features_train[i,j] - xq.train_mean[i]) / xq.train_sd[i]
+  
+  ## Feature Selection
+  
+  ### Wilcoxan Rank Sum (Univariate Nonparametric Filter)
+  
+  x.P_LIM = 0.00000001
+  x.train_w_idx = vector()
+  
+  #x
+  for (i in 1:nrow(hw3B.x.features_train_normalized)) {
+  x.w <-
+  wilcox.test(unlist(hw3B.x.features_train_normalized[i,]) ~ hw3B.x.classes_train,
+  data = hw3B.x.features_train_normalized)
+  if (x.w$p.value < x.P_LIM)
+  x.train_w_idx <-
+  append(x.train_w_idx,i) #store indices of significant features
   #print(x.train_w_idx %>% length()) debugging
-}
-print(x.train_w_idx %>% length())
-
-#xq
-for (i in 1:nrow(hw3B.xq.features_train_normalized)){
-  xq.w <- wilcox.test(unlist(hw3B.xq.features_train_normalized[i,]) ~ hw3B.xq.classes_train,
-                     data = hw3B.xq.features_train_normalized)
-  if(xq.w$p.value < xq.P_LIM)
-    xq.train_w_idx <- append(xq.train_w_idx,i) #store indices of significant features
-  #print(xq.train_w_idx %>% length()) debugging 
-}
-print(xq.train_w_idx %>% length())
-
-#now we can retain only our selected columns
-hw3B.xq.features_train_normalized_w <- hw3B.xq.features_train_normalized[xq.train_w_idx,]
-hw3B.x.features_train_normalized_w <- hw3B.x.features_train_normalized[x.train_w_idx,]
-
-#add the class labels to the feature data frame
-hw3B.xq.net_input <- data.frame(t(hw3B.xq.features_train_normalized_w))
-hw3B.x.net_input <- data.frame(t(hw3B.x.features_train_normalized_w))
-
-hw3B.xq.net_input["class"] <- hw3B.xq.classes_train
-hw3B.x.net_input["class"] <- hw3B.x.classes_train
-```
-
-### Linear Fit (Univariate Parametric Filter)
-
-```{r}
-design= model.matrix(hw3B.xq.classes_train)
-fit <- lmFit(hw3B.xq.features_train_normalized,hw3B.xq.classes_train)
-fit <- eBayes(fit)
-topTable(fit,coef=2)
-
-limmaRes = topTable(fit,coef=2,  p.value=0.05, number=500)
-print(nrow(limmaRes))
-
-x.ilen <- intersect(limmaRes %>% rownames(),hw3B.xq.net_input %>% colnames()) %>% length()
-print(x.ilen / limmaRes %>% nrow())
-```
-
-### Bayesian Net Construction (Multivariate Nonparametric Filter)
-
-```{r}
-library(bnlearn)
-library(Rgraphviz)
-
-bn.xq.hc <- hc(hw3B.xq.net_input)
-bn.xq.fast.iamb <- fast.iamb(hw3B.xq.net_input)
-bn.x.hc <- hc(hw3B.x.net_input)
-# takes too long
-#bn.x.fast.iamb <- fast.iamb(hw3B.x.net_input)
-```
-
-```{r}
-# only show xq because x net is too big
-par(mfrow = c(1,2))
-graphviz.plot(bn.xq.hc)
-graphviz.plot(bn.xq.fast.iamb)
-```
-
-### Markov Blanket Filter
-
-```{r}
-xq.mhc <- mb(bn.xq.hc,node="class")
-xq.mfi <- mb(bn.xq.fast.iamb,node="class")
-x.mhc <- mb(bn.x.hc,node="class")
-# takes too long
-#x.mfi <- mb(bn.x.fast.iamb,node="class")
-
-#use the features common between the greedy hill-climbing and fast iamb blankets
-xq.i <- intersect(xq.mhc,xq.mfi)
-x.i <- x.mhc #intersect(x.mhc,x.mfi)
-```
-
-### SVM
-
-```{r}
-library(e1071)
-
-#change to markov blanket features
-hw3B.xq.svm_input <- data.frame(t(hw3B.xq.features_train_normalized_w))
-
-#train model
-xq.model <- svm(hw3B.xq.svm_input,hw3B.xq.classes_train,kernel="linear")
-
-#check accuracy (on data we just trained on)
-xq.class_ag <- table(predict(xq.model,hw3B.xq.svm_input),hw3B.xq.classes_train) %>%
+  }
+  print(x.train_w_idx %>% length())
+  
+  #now we can retain only our selected columns
+  hw3B.x.features_train_normalized_w <-
+  hw3B.x.features_train_normalized[x.train_w_idx,]
+  
+  #add the class labels to the feature data frame
+  hw3B.xq.net_input <-
+  data.frame(t(hw3B.xq.features_train_normalized))
+  hw3B.x.net_input <-
+  data.frame(t(hw3B.x.features_train_normalized_w))
+  
+  hw3B.xq.net_input["class"] <- hw3B.xq.classes_train
+  hw3B.x.net_input["class"] <- hw3B.x.classes_train
+  
+  ### Linear Fit (Univariate Parametric Filter)
+  
+  design = model.matrix(hw3B.x.classes_train)
+  fit <- lmFit(hw3B.x.features_train_normalized,hw3B.x.classes_train)
+  fit <- eBayes(fit)
+  topTable(fit,coef = 2)
+  
+  limmaRes = topTable(fit,coef = 2,  p.value = 0.05, number = 500)
+  print(nrow(limmaRes))
+  
+  x.ilen <-
+  intersect(limmaRes %>% rownames(),hw3B.x.net_input %>% colnames()) %>% length()
+  print(x.ilen / limmaRes %>% nrow())
+  
+  ### Bayesian Net Construction (Multivariate Nonparametric Filter)
+  
+  bn.xq.hc <- hc(hw3B.xq.net_input)
+  bn.xq.fast.iamb <- fast.iamb(hw3B.xq.net_input)
+  bn.x.hc <- hc(hw3B.x.net_input)
+  # takes too long
+  #bn.x.fast.iamb <- fast.iamb(hw3B.x.net_input)
+  
+  # show bayesian net for debugging
+  #par(mfrow = c(1,2))
+  #graphviz.plot(bn.xq.hc)
+  #graphviz.plot(bn.xq.fast.iamb)
+  
+  ### Markov Blanket Filter
+  
+  # fast.iamb takes too long
+  xq.mhc <- mb(bn.xq.hc,node = "class")
+  #xq.mfi <- mb(bn.xq.fast.iamb,node="class")
+  x.mhc <- mb(bn.x.hc,node = "class")
+  #x.mfi <- mb(bn.x.fast.iamb,node="class")
+  
+  ### SVM
+  
+  #change to markov blanket features
+  hw3B.xq.svm_input <-
+  data.frame(t(hw3B.xq.features_train_normalized_w))
+  
+  #train model
+  xq.model <-
+  svm(hw3B.xq.svm_input,hw3B.xq.classes_train,kernel = "linear")
+  
+  #check accuracy (on data we just trained on)
+  xq.class_ag <-
+  table(predict(xq.model,hw3B.xq.svm_input),hw3B.xq.classes_train) %>%
   classAgreement()
-
-print(1 - xq.class_ag$diag) #misclassification rate
-
-#check accuracy (on hold out data)
-#normalize
-#filter features
-#test
+  
+  print(1 - xq.class_ag$diag) #misclassification rate
+  
+  #check accuracy (on hold out data)
+  #normalize
+  #filter features
+  #test
+}
 ```
 
 ## References
