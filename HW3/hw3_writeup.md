@@ -1,5 +1,7 @@
-write [R#] references, fill in XXX numbers, add [A#] appendix information
-
+Joshua Burkhart  
+2.6.2016  
+BMI 651  
+#HW3 (B)
 > Input datasets are as below:
 > 
 > - a: raw intensity values from the original CEL files arranged in a matrix layout, where each column represents one hybridization, and rows stand for individual array features
@@ -17,7 +19,7 @@ write [R#] references, fill in XXX numbers, add [A#] appendix information
 > 
 > 1. Extract feature candidates, probe intensities, gene expression levels, etc., from their original data sources and combine them into a single data table. This will allow for simpler handling for the remainder of the analysis. 
 >
-> 2. Scan & address missing data. Because we have so few samples and so many total features, we'll prefer to drop features than drop samples. We must scan probe intensities, gene expression levels, etc..
+> 2. Scan for & address missing data. Because we have so few samples and so many total features, we'll prefer to drop features than drop samples. We must scan probe intensities, gene expression levels, etc..
 >
 > 3. Convert feature datatypes as nessecary. For example, genotype is stored as one of two values: "FGF4-KO" and "WT". We'll change "FGF4-KO" to 1 and "WT" to 0.
 >
@@ -25,17 +27,17 @@ write [R#] references, fill in XXX numbers, add [A#] appendix information
 >
 > 5. Randomly split data into training and test sets. We will assure similar proportians of genotype and class are split between training and test sets. Also, seeing as we have so few samples, we'll use an 80%/20% training/test split.
 >
-> 6. Randomly split training data to prepare for 10-fold cross validation. This will require a 90/10 validation/training split.
+> 6. Randomly split training data to prepare for cross validation. After heavy testing & tuning, we'll shoot for 3-fold Monte Carlo cross validation. Ideally we'd prefer more folds but appropreate computational resources are not currently available.
 >
-> 7. Z score transform all the training feature values, storing the means and standard deviations for all columns so validation & test data can be transformed similarly later on. Putting features on the same scale allows some optimization algorithms, such as gradient descent, to converge more quickly and generally allows for more direct comparisons between feature distributions.
+> 7. Z score transform all the training feature values for the xq dataset, storing the means and standard deviations for all columns so validation & test data can be transformed similarly later on. Putting features on the same scale allows some optimization algorithms, such as gradient descent, to converge more quickly and generally allows for more direct comparisons between feature distributions. This could be done for the x dataset too but it looks fairly evenly distributed as it is[A6], unlike the xq dataset[A7]. Also, Z scoring x takes a long time.
 >
-> 8. We'd like to explain a lot of variance without using too many features, as that can make things confusing. Normally we'd favor PCA as a logical next step to a learning system but, keeping in mind we'd like to create a model that's interpretable to biologists later on, it will be better to avoid it. Instead, we'll use another nonparametric multivariate filter that avoids feature transforms, a Markov Blanket[R1]. The difficulty with this technique is in constructing the nessecary bayesian net from which to extract the blanket. For the x dataset we'll need to filter the features apriori.
+> 8. We'd like to explain a lot of variance without using too many features, as that can make things confusing. Normally we'd favor PCA as a logical next step to a learning system but, keeping in mind we'd like to create a model that's interpretable to biologists later on; it will be better to avoid it. Instead, we'll use another nonparametric multivariate filter that avoids feature transforms, a Markov Blanket[R1]. The difficulty with this technique is in constructing the nessecary bayesian net from which to extract the blanket. For the x dataset we'll need to filter the features apriori.
 > 
 > 9. While the Markov Blanket feature selection approach will work well for the xq dataset containing only XXX features, the construction of a bayesian net for the x dataset (containing XXX features) requires unavailable computational resources. Thus, we'll use a nonparametric univariate filter, the Wilcoxon Rank Sum, to reduce our feature set before hand.
 > 
-> 10. As there has been skepticism regarding the use of the Wilcoxon Rank Sum test to select features[R2], we'll remember that an accepted parametric univariate filter method, linear model fitting, relies on the OLS optimization which assumes normally distributed feature values, while the Wilcoxon Rank Sum test makes no such assumption about the distribution of feature values as it simply relies on the ranking of feature values to discover features whose values for one class are greater or less than those of another. Also, we'll show that linear model fitting finds a similar set of features as the Wilcoxon Rank Sum approach, providing at least some sense of validation. 
+> 10. As there has been skepticism regarding the use of the Wilcoxon Rank Sum test to select features[R2], we'll remember that an accepted parametric univariate filter method, linear model fitting, assumes normally distributed feature values, while the Wilcoxon Rank Sum test makes no such assumption about the distribution of feature values as it simply relies on the ranking of feature values to discover features whose values for one class are greater or less than those of another. Also, we'll show that linear model fitting finds a similar set of features as the Wilcoxon Rank Sum approach anyhow, providing at least some sense of validation. 
 >
-> 11. After extracting our Markov Blankets for each dataset, we'll train a support vector machine (SVM) with a linear kernel. This model selection was made because SVM's with linear kernels are thought to be rather straight forward to interpret, which is a main concern.
+> 11. After extracting our Markov Blankets for each dataset, we'll train a support vector machine (SVM) with a linear kernel. This model selection was made because SVM's with linear kernels are thought to be rather straight forward to interpret[R5], which is a main concern.
 >
 > 12. The trained SVM will be run against the previously separated validation data and its error rate, a simple misclassification rate, will be recorded for each of the 10 cross-validation folds, along with the generated feature set and SVM.
 > 
@@ -67,14 +69,18 @@ write [R#] references, fill in XXX numbers, add [A#] appendix information
 
 ### Cross Validation
 
-### Model Selection & Validation
+> Monte Carlo cross validation (with 3-folds) was performed and the results from the iteration with the lowest error on the validation set were recorded. This included the feature means and standard deviations for both x and xq datasets, the percent similarity to the linear model feature filter for the x dataset (87.67%), the markov blankets for both x and xq datasets, the validation error for the selected fold for both x and xq datasets (0 for both), and the trained SVM for both x and xq datasets.
 
 ### Model Assessment & Results
 
+> Test data was transformed using the means and standard deviations recorded during cross validation and predictions were made made by the trained SVM's. The test data for the x dataset is classified correctly for all 20 samples (0% test error) and the test data for xq is classified correctly for 26 of 27 samples (3.7% test error).
+
 ## References
 
-> [] McWeeney, S., Personal Communication, Feb. 4, 2016.
+> [4] McWeeney, S., Personal Communication, Feb. 4, 2016.
+> 
+> [5] Rosenbaum, Lars, et al. "Interpreting linear support vector machine models with heat map molecule coloring." J. Cheminformatics 3.11 (2011).
 
-## APPENDIX
+## Appendix
 
 > []

@@ -341,9 +341,6 @@ for(cv_idx in seq(1:3)){
     xq.cv_err <- xq.err_rate
     xq.cv_svm <- xq.model
   }
-  
-  print(c(cv_idx,x.cv_pct_lm,x.cv_mhc,x.cv_err,x.cv_svm))
-  print(c(cv_idx,xq.cv_mhc,xq.cv_err,xq.cv_svm))
 }
 ```
 
@@ -351,8 +348,10 @@ for(cv_idx in seq(1:3)){
 
 ```{r}
 
-# x feat. similarity with lm filter, markov blankets, and error rates
+# x feat. similarity with lm filter, markov blanket, & error rate
 print(c(x.cv_pct_lm,x.cv_mhc,x.cv_err))
+
+# xq markov blanket & error rate
 print(c(xq.cv_mhc,xq.cv_err))
 ```
 
