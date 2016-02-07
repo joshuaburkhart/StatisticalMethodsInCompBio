@@ -1,6 +1,13 @@
-Joshua Burkhart  
-2.6.2016  
-BMI 651  
+---
+title: "Homework 3 Writeup"
+author: "Joshua Burkhart"
+date: "February 6, 2016"
+output: 
+  pdf_document: 
+    fig_width: 9
+    fig_height: 6
+    latex_engine: xelatex
+---
 #HW3
 > Input datasets are as below:
 > 
@@ -89,7 +96,62 @@ BMI 651
 
 ## Appendix
 
+> [0]
+
+```{r global_options, echo=FALSE, include=FALSE, error=FALSE}
+knitr::opts_chunk$set(fig.path = "Figs/",
+                      message = FALSE,
+                      warning = FALSE,
+                      include = TRUE,
+                      echo = TRUE,
+                      error = TRUE,
+                      fig.width = 11,
+                      comment = NA)
+```
+
+```{r, echo=FALSE, include=FALSE}
+library(MASS)
+library(plyr) #this must be loaded before dplyr 
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(knitr)
+library(magrittr)
+library(reshape2)
+library(infotheo)
+library(stats)
+library(ggbiplot)
+library(car)
+library("Hiiragi2013")
+set.seed(2013) #does this need to be set to 2013? why?
+```
+
+```{r}
+data("x")
+data("xq")
+data("xql")
+
+#feature candidates
+hw3A.x.genotypes <- x@phenoData@data$genotype
+hw3A.x.probe_intensities <- data.frame(assayDataElement(x@assayData,'exprs'))
+hw3A.xq.cell_type <- xq@phenoData@data$Cell.type
+hw3A.xq.gene_expressions <- data.frame(assayDataElement(xq@assayData,'exprs'))
+hw3A.xql.label <- xql@phenoData@data$Label
+hw3A.xql.gene_expressions <- data.frame(assayDataElement(xql@assayData,'exprs'))
+
+#classes
+hw3A.x.classes <- x@phenoData@data$Embryonic.day
+hw3A.xq.classes <- xq@phenoData@data$Embryonic.day
+hw3A.xql.classes <- xql@phenoData@data$Embryonic.day
+
+#additional data we'll consider when testing for batch effects 
+hw3A.x.pheno_dates <- as.Date(x@phenoData@data$ScanDate)
+hw3A.x.proto_dates <- as.Date(x@protocolData@data$ScanDate)
+hw3A.x.num_cells <- as.numeric(x@phenoData@data$Total.number.of.cells)
+```
+
 > [1]
+
 ```{r, echo=FALSE}
 smush <- t(data.frame(hw3A.x.probe_intensities))
 mm3 <- melt(smush)
@@ -101,7 +163,9 @@ ggplot(mm3) +
        y="Probe Intensity Distributions Across Samples",
        title="Probe Intensity Distributions Across Samples Across Developmental Stages in Dataset x")
 ```
+
 > [2]
+
 ```{r, echo=FALSE}
 smush <- t(data.frame(hw3A.xq.gene_expressions))
 mm4 <- melt(smush)
@@ -113,7 +177,9 @@ ggplot(mm4) +
        y="Gene Expression Distributions Across Samples",
        title="Gene Expression Distributions Across Samples Across Developmental Stages in Dataset xq")
 ```
+
 > [3]
+
 ```{r, eval=FALSE}
 sum(is.na(hw3A.x.genotypes))
 sum(is.na(hw3A.x.probe_intensities))
@@ -125,12 +191,16 @@ sum(is.na(hw3A.x.classes))
 sum(is.na(hw3A.xq.classes))
 sum(is.na(hw3A.xql.classes))
 ```
+
 > [4]
+
 ```{r, eval=FALSE}
 t(hw3A.xq.gene_expressions) %>% summary()
 hw3A.xq.gene_expressions <- na.omit(hw3A.xq.gene_expressions)
 ```
+
 > [5]
+
 ```{r, echo=FALSE}
 plot(x=hw3A.x.classes,
      xlab="Developmental Stage",
@@ -145,14 +215,18 @@ plot(x=as.factor(hw3A.xql.classes),
      ylab="Abundance",
      main="Distribution of Developmental Stages in Dataset xql")
 ```
+
 > [6]
+
 ```{r}
 plot(x=hw3A.x.genotypes,
      xlab="Genotype",
      ylab="Abundance",
      main="Distribution of Genotypes in Dataset x")
 ```
+
 > [7]
+
 ```{r}
 range(hw3A.x.probe_intensities) %>% invisible()
 rdiff <- round(range(hw3A.x.probe_intensities)[2] - range(hw3A.x.probe_intensities)[1])
@@ -161,7 +235,9 @@ Boxplot(.bincode(hw3A.x.probe_intensities[,1],bins),
      ylab="Intensity",
      main="Distribution of Probe Intensities in Dataset x") %>% invisible()
 ```
+
 > [8]
+
 ```{r}
 mm <- melt(hw3A.x.probe_intensities)
 ggplot(mm) +
@@ -171,7 +247,9 @@ ggplot(mm) +
        y="Probe Intensity Distribution",
        title="Probe Intensity Distributions Across Samples")
 ```
+
 > [9]
+
 ```{r}
 mm2 <- melt(hw3A.xq.gene_expressions)
 ggplot(mm2) +
@@ -181,12 +259,16 @@ ggplot(mm2) +
        y="Gene Expression Distribution",
        title="Gene Expression Distributions Across Samples")
 ```
+
 > [10]
+
 ```{r}
 table(x=hw3A.x.genotypes,y=hw3A.x.classes) %>% chisq.test()
 table(hw3A.xq.cell_type,hw3A.xq.classes) %>% chisq.test()
 ```
+
 > [11]
+
 ```{r, echo=FALSE}
 x.idx <- seq(1,length(hw3A.x.classes))
 plot(x=x.idx,
@@ -201,7 +283,9 @@ plot(x=xq.idx,
      ylab="Developmental Stage",
      main="Developmental Stages Across Index in Dataset xq")
 ```
+
 > [12]
+
 ```{r, echo=FALSE}
 plot(x=hw3A.x.pheno_dates,
      y=hw3A.x.classes,
@@ -214,12 +298,16 @@ plot(x=hw3A.x.proto_dates,
      ylab="Developmental Stage",
      main="Protocol Scan Dates Across Developmental Stages in Dataset x")
 ```
+
 > [13]
+
 ```{r}
 table(hw3A.x.pheno_dates,hw3A.x.classes) %>% chisq.test()
 table(hw3A.x.proto_dates,hw3A.x.classes) %>% chisq.test()
 ```
+
 > [14]
+
 ```{r, echo=FALSE}
 plot(x=hw3A.x.num_cells,
      y=hw3A.x.classes,
@@ -227,7 +315,9 @@ plot(x=hw3A.x.num_cells,
      ylab="Developmental Stage",
      main="Number of Cells Across Developmental Stages in Dataset x")
 ```
+
 > [15]
+
 ```{r}
 table(hw3A.x.num_cells,hw3A.x.classes) %>% chisq.test()
 ```
