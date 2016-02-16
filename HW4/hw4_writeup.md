@@ -5,7 +5,7 @@
 
 (100 pts) 
 
-For this assignment, you will utilize the spam data set  (58 columns total, with 57 being features and last a factor : email or spam, and 4601 rows - representing emails ) 
+For this assignment, you will utilize the spam dataset  (58 columns total, with 57 being features and last a factor : email or spam, and 4601 rows - representing emails ) 
 
 You can download data at: http://statweb.stanford.edu/~tibs/ElemStatLearn/datasets/spam.data) 
 
@@ -23,7 +23,7 @@ Develop an R script that does the following:
 
 ##2.
 
-- Splits the data set at random into a training set and testing set (1:1 split)
+- Splits the dataset at random into a training set and testing set (1:1 split)
 
 - checks to ensure they are non-overlapping
 
@@ -35,7 +35,7 @@ Develop an R script that does the following:
 
 - Classification tree for training data that you prune by cross-validation.
 
--  Script must generate plots for CV error versus tree size
+- Script must generate plots for CV error versus tree size
 
 - plot best tree and provide its error rate on the testing data. 
 
@@ -47,7 +47,7 @@ Develop an R script that does the following:
 
 - Script must generate a plot of the importance of the variables, (for ensemble)
 
--  provide error rate (ensemble) on the testing data.
+- provide error rate (ensemble) on the testing data.
 
 ##5.
 

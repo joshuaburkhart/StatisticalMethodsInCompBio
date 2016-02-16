@@ -38,16 +38,62 @@ spam.df <- read.table("~/SoftwareProjects/StatisticalMethodsInCompBio/HW4/spam.d
 
 ##1
 
-> Our dataset contains 1813 rows labelled 1 (spam) and 2788 rows labelled 0 (not spam) for a 61% (non spam) to 39% (spam) split. As a constant (naive) classifier could achieve a 39% misclassification rate by ouputting 0 (non spam) for each example, we'll hope to develop a classifier with a lower misclassification rate.
+> Our dataset contains 1813 rows labelled 1 (spam) and 2788 rows labelled 0 (not spam) for a 60.6% (non spam) to 39.4% (spam) split. As a constant (naive) classifier could achieve a 39.4% misclassification rate by ouputting 0 (non spam) for each example, we'll hope to develop a classifier with a lower misclassification rate.
 
 ```{r}
 spam.df %>% dim()
 spam.df[,58] %>% table()
-1813/spam.df %>% nrow()
-2788/spam.df %>% nrow()
+spam.df[,58] %>% table() %>% as.vector() %>% .[1]/spam.df %>% nrow()
+spam.df[,58] %>% table() %>% as.vector() %>% .[2]/spam.df %>% nrow()
 ```
 
 ##2
+
+> Split data (1:1 split)
+
+```{r}
+index <- sample(1:nrow(spam.df),round(0.5*nrow(spam.df)))
+spam.df_train <- spam.df[index,]
+spam.df_test <- spam.df[-index,]
+```
+
+> Assure training & test datasets are non-overlapping. Interestingly, the original dataset appears to have 391 duplicated rows. We'll filter these out and resplit our data into training and test datasets. We'll also check the class (spam / non spam) distribution of the filtered spam dataset and observe it changes only slightly to 60.1% non spam, 39.9% spam.
+
+```{r}
+duplicated(spam.df) %>% table()
+
+spam.df_unique <- unique(spam.df)
+
+index <- sample(1:nrow(spam.df_unique),round(0.5*nrow(spam.df_unique)))
+spam.df_train <- spam.df_unique[index,]
+spam.df_test <- spam.df_unique[-index,]
+
+spam.df_unique %>% dim()
+spam.df_unique[,58] %>% table()
+spam.df_unique[,58] %>% table() %>% as.vector() %>% .[1]/spam.df_unique %>% nrow()
+spam.df_unique[,58] %>% table() %>% as.vector() %>% .[2]/spam.df_unique %>% nrow()
+```
+
+> Assure split requested (1:1) is correct
+
+```{r}
+spam.df_train %>% dim()
+spam.df_test %>% dim()
+```
+
+> Compare percentage of spam in training & test datasets
+
+```{r}
+# training set
+spam.df_train[,58] %>% table()
+spam.df_train[,58] %>% table() %>% as.vector() %>% .[1]/spam.df_train %>% nrow()
+spam.df_train[,58] %>% table() %>% as.vector() %>% .[2]/spam.df_train %>% nrow()
+
+# test set
+spam.df_test[,58] %>% table()
+spam.df_test[,58] %>% table() %>% as.vector() %>% .[1]/spam.df_test %>% nrow()
+spam.df_test[,58] %>% table() %>% as.vector() %>% .[2]/spam.df_test %>% nrow()
+```
 
 ##3
 
