@@ -1,0 +1,56 @@
+---
+title: "StatMethodsHW4"
+author: "Joshua Burkhart"
+date: "February 18, 2016"
+output: 
+pdf_document: 
+fig_width: 9
+fig_height: 6
+latex_engine: xelatex
+---
+# BMI 651: HW4
+
+```{r global_options, echo=FALSE, include=FALSE, error=FALSE}
+knitr::opts_chunk$set(fig.path = "Figs/",
+                      message = FALSE,
+                      warning = FALSE,
+                      include = TRUE,
+                      echo = TRUE,
+                      error = TRUE,
+                      fig.width = 11,
+                      comment = NA)
+```
+
+```{r, echo=FALSE, include=FALSE}
+library(MASS)
+library(plyr) #this must be loaded before dplyr 
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(knitr)
+library(magrittr)
+library(tree)
+```
+
+```{r}
+spam.df <- read.table("~/SoftwareProjects/StatisticalMethodsInCompBio/HW4/spam.data")
+```
+
+##1
+
+> Our dataset contains 1813 rows labelled 1 (spam) and 2788 rows labelled 0 (not spam) for a 61% (non spam) to 39% (spam) split. As a constant (naive) classifier could achieve a 39% misclassification rate by ouputting 0 (non spam) for each example, we'll hope to develop a classifier with a lower misclassification rate.
+
+```{r}
+spam.df %>% dim()
+spam.df[,58] %>% table()
+1813/spam.df %>% nrow()
+2788/spam.df %>% nrow()
+```
+
+##2
+
+##3
+
+##4
+
+##5
