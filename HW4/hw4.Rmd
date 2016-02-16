@@ -57,21 +57,23 @@ spam.df_train <- spam.df[index,]
 spam.df_test <- spam.df[-index,]
 ```
 
-> Assure training & test datasets are non-overlapping. Interestingly, the original dataset appears to have 391 duplicated rows. We'll filter these out and resplit our data into training and test datasets. We'll also check the class (spam / non spam) distribution of the filtered spam dataset and observe it changes only slightly to 60.1% non spam, 39.9% spam.
+> Assure training & test datasets are non-overlapping. Interestingly, the original dataset appears to have 391 duplicated rows. We'll filter these out and resplit our data into training and test datasets. We'll also check the class (spam / non spam) distribution of the filtered spam dataset and observe it changes only slightly to 60.1% non spam, 39.9% spam. Finally, we see that our training and test datasets contain no intersecting (overlapping) rows.
 
 ```{r}
 duplicated(spam.df) %>% table()
 
 spam.df_unique <- unique(spam.df)
 
-index <- sample(1:nrow(spam.df_unique),round(0.5*nrow(spam.df_unique)))
-spam.df_train <- spam.df_unique[index,]
-spam.df_test <- spam.df_unique[-index,]
-
 spam.df_unique %>% dim()
 spam.df_unique[,58] %>% table()
 spam.df_unique[,58] %>% table() %>% as.vector() %>% .[1]/spam.df_unique %>% nrow()
 spam.df_unique[,58] %>% table() %>% as.vector() %>% .[2]/spam.df_unique %>% nrow()
+
+index <- sample(1:nrow(spam.df_unique),round(0.5*nrow(spam.df_unique)))
+spam.df_train <- spam.df_unique[index,]
+spam.df_test <- spam.df_unique[-index,]
+
+intersect(spam.df_train,spam.df_test) %>% nrow()
 ```
 
 > Assure split requested (1:1) is correct
