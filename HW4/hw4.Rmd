@@ -30,6 +30,7 @@ library(broom)
 library(knitr)
 library(magrittr)
 library(tree)
+set.seed(1234)
 ```
 
 ```{r}
@@ -98,6 +99,49 @@ spam.df_test[,58] %>% table() %>% as.vector() %>% .[2]/spam.df_test %>% nrow()
 ```
 
 ##3
+
+> Build classification tree for training dataset pruned following cross validation. Interestingly, K=10 fold cross validation shows deviance decreasing for each additional split, up to 11 (for a tree with 12 terminal nodes), the same number of splits used to build the original tree. Thus, nothing is actually pruned.
+
+```{r}
+# applying factor() to the response forces production of a classification tree
+# (Brian, A., & Ripley, M. B. (2016). Package “ tree .”)
+spam.tree <- tree(factor(spam.df_train$V58)~.,data=spam.df_train)
+
+# perform K=10 fold cross validation
+spam.tree_cv <- cv.tree(spam.tree,K=10)
+
+# prune the tree, allowing 12 terminal nodes
+spam.tree_pruned <- prune.tree(spam.tree,best=12)
+```
+
+> Generate plots for cv error vs tree size
+
+```{r}
+plot(spam.tree_cv,main="Tree Size vs Deviance (Number of Misclassifications)\n\n")
+```
+
+> Plotting best tree
+
+```{r}
+plot(spam.tree_pruned,main="'Pruned' Tree\n")
+text(spam.tree_pruned)
+```
+
+> Getting misclassification error on test dataset. Using only 11 splits, we were able to achieve a 10.1% misclassification rate using our 'pruned' tree.
+
+```{r}
+# perform prediction on test dataset
+spam.test_pred <- predict(spam.tree_pruned,spam.df_test[,-58],type="class")
+
+# calculate misclassification percentage
+table(as.integer(as.character(spam.test_pred)) == spam.df_test[,58]) %>% .[1] / length(spam.test_pred)
+```
+
+> Summarize variables in 'pruned' tree
+
+```{r}
+spam.tree_pruned %>% summary()
+```
 
 ##4
 
