@@ -30,6 +30,8 @@ library(broom)
 library(knitr)
 library(magrittr)
 library(tree)
+library(rpart)
+library(adabag)
 set.seed(1234)
 ```
 
@@ -100,7 +102,7 @@ spam.df_test[,58] %>% table() %>% as.vector() %>% .[2]/spam.df_test %>% nrow()
 
 ##3
 
-> Build classification tree for training dataset pruned following cross validation. Interestingly, K=10 fold cross validation shows deviance decreasing for each additional split, up to 11 (for a tree with 12 terminal nodes), the same number of splits used to build the original tree. Thus, nothing is actually pruned.
+> Build classification tree for training dataset pruned following cross validation. Interestingly, K=10 fold cross validation shows deviance decreasing for each additional split, up to 11 (for a tree with 12 terminal nodes), the same number of splits used to build the original tree. Thus, nothing is actually pruned. That the tree stops after 11 splits is likely an artifact of the built-in heuristics of the R 'tree' library.
 
 ```{r}
 # applying factor() to the response forces production of a classification tree
@@ -114,7 +116,7 @@ spam.tree_cv <- cv.tree(spam.tree,K=10)
 spam.tree_pruned <- prune.tree(spam.tree,best=12)
 ```
 
-> Generate plots for cv error vs tree size
+> Generate plots for cv error vs tree size. The deviance decreases for each of the 11 splits (resulting in 12 terminal nodes).
 
 ```{r}
 plot(spam.tree_cv,main="Tree Size vs Deviance (Number of Misclassifications)\n\n")
@@ -145,4 +147,56 @@ spam.tree_pruned %>% summary()
 
 ##4
 
+> Bagging for ensemble of 100 trees for training data
+
+```{r}
+spam.df_train$V58 <- factor(spam.df_train$V58)
+spam.bagging <- bagging(V58~.,data=spam.df_train,mfinal=100)
+```
+
+> plot of the importance of the variables, (for ensemble)
+
+```{r}
+imp <- data.frame(spam.bagging$importance)
+ggplot(data=imp, aes(x=rownames(imp),y=imp$spam.bagging.importance)) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  xlab("Variable") +
+  ylab("Importance") +
+  ggtitle("Bagging Variable Importance")
+```
+
+> Calculating test error rate... we see a slight reduction in test error after bagging, 10.1% to 9.36% error, a reduction of 0.74%.
+
+```{r}
+spam.df_test$V58 <- factor(spam.df_test$V58)
+spam.bagging_test_pred <- predict(spam.bagging,spam.df_test,type="class")
+spam.bagging_test_pred$error
+```
+
 ##5
+
+> Boosting for ensemble of 100 trees for training data
+
+```{r}
+spam.boosting <- boosting(V58~.,data=spam.df_train,mfinal=100)
+```
+
+> plot of the importance of the variables, (for ensemble)
+
+```{r}
+imp <- data.frame(spam.boosting$importance)
+ggplot(data=imp, aes(x=rownames(imp),y=imp$spam.boosting.importance)) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  xlab("Variable") +
+  ylab("Importance") +
+  ggtitle("Boosting Variable Importance")
+```
+
+> Calculating test error rate... we see our test error rate nearly cut in half after boosting, 9.36% to 5.13% error, a reduction of 4.23%.
+
+```{r}
+spam.boosting_test_pred <- predict(spam.boosting,spam.df_test,type="class")
+spam.boosting_test_pred$error
+```
