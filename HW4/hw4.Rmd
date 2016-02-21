@@ -1,14 +1,14 @@
 ---
-title: "StatMethodsHW4"
+title: "BMI 651"
 author: "Joshua Burkhart"
-date: "February 18, 2016"
+date: "February 22, 2016"
 output: 
-pdf_document: 
-fig_width: 9
-fig_height: 6
-latex_engine: xelatex
+  pdf_document: 
+    fig_width: 9
+    fig_height: 6
+    latex_engine: xelatex
 ---
-# BMI 651: HW4
+# HW4: APPENDIX
 
 ```{r global_options, echo=FALSE, include=FALSE, error=FALSE}
 knitr::opts_chunk$set(fig.path = "Figs/",
@@ -41,8 +41,6 @@ spam.df <- read.table("~/SoftwareProjects/StatisticalMethodsInCompBio/HW4/spam.d
 
 ##1
 
-> Our dataset contains 1813 rows labelled 1 (spam) and 2788 rows labelled 0 (not spam) for a 60.6% (non spam) to 39.4% (spam) split. As a constant (naive) classifier could achieve a 39.4% misclassification rate by ouputting 0 (non spam) for each example, we'll hope to develop a classifier with a lower misclassification rate.
-
 ```{r}
 spam.df %>% dim()
 spam.df[,58] %>% table()
@@ -52,7 +50,7 @@ spam.df[,58] %>% table() %>% as.vector() %>% .[2]/spam.df %>% nrow()
 
 ##2
 
-> Split data (1:1 split)
+###2A
 
 ```{r}
 index <- sample(1:nrow(spam.df),round(0.5*nrow(spam.df)))
@@ -60,7 +58,7 @@ spam.df_train <- spam.df[index,]
 spam.df_test <- spam.df[-index,]
 ```
 
-> Assure training & test datasets are non-overlapping. Interestingly, the original dataset appears to have 391 duplicated rows. We'll filter these out and resplit our data into training and test datasets. We'll also check the class (spam / non spam) distribution of the filtered spam dataset and observe it changes only slightly to 60.1% non spam, 39.9% spam. Finally, we see that our training and test datasets contain no intersecting (overlapping) rows.
+###2B
 
 ```{r}
 duplicated(spam.df) %>% table()
@@ -79,14 +77,14 @@ spam.df_test <- spam.df_unique[-index,]
 intersect(spam.df_train,spam.df_test) %>% nrow()
 ```
 
-> Assure split requested (1:1) is correct
+###2C
 
 ```{r}
 spam.df_train %>% dim()
 spam.df_test %>% dim()
 ```
 
-> Compare percentage of spam in training & test datasets
+###2D
 
 ```{r}
 # training set
@@ -102,7 +100,7 @@ spam.df_test[,58] %>% table() %>% as.vector() %>% .[2]/spam.df_test %>% nrow()
 
 ##3
 
-> Build classification tree for training dataset pruned following cross validation. Interestingly, K=10 fold cross validation shows deviance decreasing for each additional split, up to 11 (for a tree with 12 terminal nodes), the same number of splits used to build the original tree. Thus, nothing is actually pruned. That the tree stops after 11 splits is likely an artifact of the built-in heuristics of the R 'tree' library.
+###3A
 
 ```{r}
 # applying factor() to the response forces production of a classification tree
@@ -116,20 +114,20 @@ spam.tree_cv <- cv.tree(spam.tree,K=10)
 spam.tree_pruned <- prune.tree(spam.tree,best=12)
 ```
 
-> Generate plots for cv error vs tree size. The deviance decreases for each of the 11 splits (resulting in 12 terminal nodes).
+###3B
 
 ```{r}
 plot(spam.tree_cv,main="Tree Size vs Deviance (Number of Misclassifications)\n\n")
 ```
 
-> Plotting best tree
+###3C
 
 ```{r}
 plot(spam.tree_pruned,main="'Pruned' Tree\n")
 text(spam.tree_pruned)
 ```
 
-> Getting misclassification error on test dataset. Using only 11 splits, we were able to achieve a 10.1% misclassification rate using our 'pruned' tree.
+###3D
 
 ```{r}
 # perform prediction on test dataset
@@ -139,7 +137,7 @@ spam.test_pred <- predict(spam.tree_pruned,spam.df_test[,-58],type="class")
 table(as.integer(as.character(spam.test_pred)) == spam.df_test[,58]) %>% .[1] / length(spam.test_pred)
 ```
 
-> Summarize variables in 'pruned' tree
+###3E
 
 ```{r}
 spam.tree_pruned %>% summary()
@@ -147,14 +145,14 @@ spam.tree_pruned %>% summary()
 
 ##4
 
-> Bagging for ensemble of 100 trees for training data
+###4A
 
 ```{r}
 spam.df_train$V58 <- factor(spam.df_train$V58)
 spam.bagging <- bagging(V58~.,data=spam.df_train,mfinal=100)
 ```
 
-> plot of the importance of the variables, (for ensemble)
+###4B
 
 ```{r}
 imp <- data.frame(spam.bagging$importance)
@@ -166,7 +164,7 @@ ggplot(data=imp, aes(x=rownames(imp),y=imp$spam.bagging.importance)) +
   ggtitle("Bagging Variable Importance")
 ```
 
-> Calculating test error rate... we see a slight reduction in test error after bagging, 10.1% to 9.36% error, a reduction of 0.74%.
+###4C
 
 ```{r}
 spam.df_test$V58 <- factor(spam.df_test$V58)
@@ -176,13 +174,13 @@ spam.bagging_test_pred$error
 
 ##5
 
-> Boosting for ensemble of 100 trees for training data
+###5A
 
 ```{r}
 spam.boosting <- boosting(V58~.,data=spam.df_train,mfinal=100)
 ```
 
-> plot of the importance of the variables, (for ensemble)
+###5B
 
 ```{r}
 imp <- data.frame(spam.boosting$importance)
@@ -194,7 +192,7 @@ ggplot(data=imp, aes(x=rownames(imp),y=imp$spam.boosting.importance)) +
   ggtitle("Boosting Variable Importance")
 ```
 
-> Calculating test error rate... we see our test error rate nearly cut in half after boosting, 9.36% to 5.13% error, a reduction of 4.23%.
+###5C
 
 ```{r}
 spam.boosting_test_pred <- predict(spam.boosting,spam.df_test,type="class")
