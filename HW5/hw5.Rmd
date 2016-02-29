@@ -3,10 +3,10 @@ title: "BMI 651"
 author: "Joshua Burkhart"
 date: "February 29, 2016"
 output: 
-pdf_document: 
-fig_width: 9
-fig_height: 6
-latex_engine: xelatex
+  pdf_document: 
+    fig_width: 9
+    fig_height: 6
+    latex_engine: xelatex
 ---
 # HW5: APPENDIX
 
@@ -29,37 +29,40 @@ library(ggplot2)
 library(broom)
 library(knitr)
 library(magrittr)
-library(tree)
-library(rpart)
-library(adabag)
 set.seed(1234)
 ```
 
 ##1
 
-###A
+###1A
 
-Transition matrix for two-state model:
+> Transition matrix for two-state model:  
 
-    AT  GC
-AT .80 .20
-GC .15 .85
+```{r}
+AT = c(.80,.15)
+GC = c(.20,.85)
+df = data.frame(AT,GC)
+row.names(df) <- c("AT","GC")
+kable(df,row.names=TRUE)
+```
 
 ```{r}
 TM <- matrix(c(.8, .2,
                .15,.85),ncol=2,byrow=TRUE)
 ```
 
-###B
+###1B
 
-####i
+####1Bi
 
-Emission matrix for AT-rich regions:
+> Emission matrix for AT-rich regions:  
 
-A .30
-C .10
-G .20
-T .40
+```{r}
+P = c(.3,.1,.2,.4)
+df = data.frame(P)
+row.names(df) <- c("A","C","G","T")
+kable(df,row.names=TRUE)
+```
 
 ```{r}
 AT_EM <- matrix(c(.3,
@@ -68,14 +71,16 @@ AT_EM <- matrix(c(.3,
                   .4),ncol=1,byrow=TRUE)
 ```
 
-####ii
+####1Bii
 
-Emission matrix for GC-rich regions:
+> Emission matrix for GC-rich regions:
 
-A .05
-C .30
-G .55
-T .10
+```{r}
+P = c(.05,.30,.55,.10)
+df = data.frame(P)
+row.names(df) <- c("A","C","G","T")
+kable(df,row.names=TRUE)
+```
 
 ```{r}
 GC_EM <- matrix(c(.05,
@@ -84,7 +89,7 @@ GC_EM <- matrix(c(.05,
                   .1),ncol=1,byrow=TRUE)
 ```
 
-###C
+###1C
 
 ```{r}
 GenerateNucSeq <- function(num_nucs)
@@ -112,10 +117,9 @@ GenerateNucSeq <- function(num_nucs)
 GenerateNucSeq(100)
 ```
 
-###D
+###1D
 
 ```{r}
-
 
 AT_DICT <- list(A=.30,
                 C=.10,
@@ -127,34 +131,36 @@ GC_DICT <- list(A=.05,
                 G=.55,
                 T=.10)
 
-MostLikelyNextState <- function(cur_nuc,next_nuc,cur_state)
+GenerateStateSeq <- function(nuc_seq)
 {
-  if(cur_state == "AT")
+  at_state_prob <- AT_DICT[[nuc_seq[1]]] # P(nuc_seq[1]|AT)
+  gc_state_prob <- GC_DICT[[nuc_seq[1]]] # P(nuc_seq[1]|GC)
+
+  at_state_trace <- sample(x=c("AT","GC"),size=1)
+  gc_state_trace <- sample(x=c("AT","GC"),size=1)
+  
+  for(i in 2:length(nuc_seq))
   {
-    return(if(TM[1,1] * AT_DICT[[cur_nuc]] * AT_DICT[[next_nuc]] >
-              TM[1,2] * GC_DICT[[cur_nuc]] * GC_DICT[[next_nuc]]) 
-      "AT" else "GC")
+    # AT
+    at_state_prob <- c(at_state_prob,max(
+      at_state_prob[i-1] * TM[1,1] * AT_DICT[[nuc_seq[i]]], # P(AT|AT) * P(qi|AT)
+      gc_state_prob[i-1] * TM[1,2] * GC_DICT[[nuc_seq[i]]])) # P(GC|AT) * P(qi|GC)
+    
+    at_state_trace <- c(at_state_trace,if(at_state_prob[i-1] * TM[1,1] >
+                                          gc_state_prob[i-1] * TM[1,2]) "AT" else "GC")
+    
+    # GC
+    gc_state_prob <- c(gc_state_prob,max(
+      gc_state_prob[i-1] * TM[2,2] * GC_DICT[[nuc_seq[i]]], # P(GC|GC) * P(qi|GC)
+      at_state_prob[i-1] * TM[2,1] * AT_DICT[[nuc_seq[i]]])) # P(AT|GC) * P(qi|AT)
+    
+    gc_state_trace <- c(gc_state_trace,if(gc_state_prob[i-1] * TM[2,2] >
+                                          at_state_prob[i-1] * TM[2,1]) "GC" else "AT")
   }
-  else if(cur_state == "GC")
-  {
-    return(if(TM[2,1] * AT_DICT[[cur_nuc]] * AT_DICT[[next_nuc]] >
-              TM[2,2] * GC_DICT[[cur_nuc]] * GC_DICT[[next_nuc]]) 
-      "AT" else "GC")
-  }
+  return(if(prod(at_state_prob) > prod(gc_state_prob))
+            at_state_trace else gc_state_trace)
 }
 
-GenerateStateSeq <- function(nuc_seq,start_state)
-{
-  state <- start_state
-  for(i in 1:(length(nuc_seq)-1)) #ignore first emission
-  {
-    state <- c(state,MostLikelyNextState(nuc_seq[i],nuc_seq[i+1],state %>% tail(n=1)))
-  }
-  return(state)
-}
-
-nuc_seq <- c("A", "A", "G", "C", "G", "T", "G", "G", "G", "G", "C", "C", "C", "C", "G", "G", "C", "G", "A", "C", "A", "T", "G", "G", "G", "G", "T", "G", "T", "C")
-start_state <- sample(x=c("AT","GC"),size=1)
-
-GenerateStateSeq(nuc_seq,start_state)
+GenerateStateSeq(c("A", "A", "G", "C", "G", "T", "G", "G", "G", "G", "C", "C", "C", "C", "G",
+                   "G", "C", "G", "A", "C", "A", "T", "G", "G", "G", "G", "T", "G", "T", "C"))
 ```
