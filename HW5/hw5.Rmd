@@ -41,7 +41,7 @@ set.seed(1234)
 
 Transition matrix for two-state model:
 
-AT  GC
+    AT  GC
 AT .80 .20
 GC .15 .85
 
@@ -115,13 +115,46 @@ GenerateNucSeq(100)
 ###D
 
 ```{r}
-GenerateStateSeq <- function(nuc_seq)
+
+
+AT_DICT <- list(A=.30,
+                C=.10,
+                G=.20,
+                T=.40)
+
+GC_DICT <- list(A=.05, 
+                C=.30,
+                G=.55,
+                T=.10)
+
+MostLikelyNextState <- function(cur_nuc,next_nuc,cur_state)
 {
-  for(i in 1:length(nuc_seq))
+  if(cur_state == "AT")
   {
-      
+    return(if(TM[1,1] * AT_DICT[[cur_nuc]] * AT_DICT[[next_nuc]] >
+              TM[1,2] * GC_DICT[[cur_nuc]] * GC_DICT[[next_nuc]]) 
+      "AT" else "GC")
+  }
+  else if(cur_state == "GC")
+  {
+    return(if(TM[2,1] * AT_DICT[[cur_nuc]] * AT_DICT[[next_nuc]] >
+              TM[2,2] * GC_DICT[[cur_nuc]] * GC_DICT[[next_nuc]]) 
+      "AT" else "GC")
   }
 }
 
+GenerateStateSeq <- function(nuc_seq,start_state)
+{
+  state <- start_state
+  for(i in 1:(length(nuc_seq)-1)) #ignore first emission
+  {
+    state <- c(state,MostLikelyNextState(nuc_seq[i],nuc_seq[i+1],state %>% tail(n=1)))
+  }
+  return(state)
+}
+
 nuc_seq <- c("A", "A", "G", "C", "G", "T", "G", "G", "G", "G", "C", "C", "C", "C", "G", "G", "C", "G", "A", "C", "A", "T", "G", "G", "G", "G", "T", "G", "T", "C")
+start_state <- sample(x=c("AT","GC"),size=1)
+
+GenerateStateSeq(nuc_seq,start_state)
 ```
