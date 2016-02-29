@@ -1,0 +1,127 @@
+---
+title: "BMI 651"
+author: "Joshua Burkhart"
+date: "February 29, 2016"
+output: 
+pdf_document: 
+fig_width: 9
+fig_height: 6
+latex_engine: xelatex
+---
+# HW5: APPENDIX
+
+```{r global_options, echo=FALSE, include=FALSE, error=FALSE}
+knitr::opts_chunk$set(fig.path = "Figs/",
+                      message = FALSE,
+                      warning = FALSE,
+                      include = TRUE,
+                      echo = TRUE,
+                      error = TRUE,
+                      fig.width = 11,
+                      comment = NA)
+```
+
+```{r, echo=FALSE, include=FALSE}
+library(MASS)
+library(plyr) #this must be loaded before dplyr 
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(knitr)
+library(magrittr)
+library(tree)
+library(rpart)
+library(adabag)
+set.seed(1234)
+```
+
+##1
+
+###A
+
+Transition matrix for two-state model:
+
+AT  GC
+AT .80 .20
+GC .15 .85
+
+```{r}
+TM <- matrix(c(.8, .2,
+               .15,.85),ncol=2,byrow=TRUE)
+```
+
+###B
+
+####i
+
+Emission matrix for AT-rich regions:
+
+A .30
+C .10
+G .20
+T .40
+
+```{r}
+AT_EM <- matrix(c(.3,
+                  .1,
+                  .2,
+                  .4),ncol=1,byrow=TRUE)
+```
+
+####ii
+
+Emission matrix for GC-rich regions:
+
+A .05
+C .30
+G .55
+T .10
+
+```{r}
+GC_EM <- matrix(c(.05,
+                  .3,
+                  .55,
+                  .1),ncol=1,byrow=TRUE)
+```
+
+###C
+
+```{r}
+GenerateNucSeq <- function(num_nucs)
+{
+  #set initial state using a uniform random distribution
+  state <- sample(x=c("AT","GC"),size=1)
+  
+  nuc_seq <- character()
+  for(i in 1:num_nucs)
+  {
+    if(state == "AT"){
+      state <- sample(x=c("AT","GC"),size=1,prob=TM[1,])
+      nuc <- sample(x=c("A","C","G","T"),size=1,prob=AT_EM)
+    }
+    else if(state == "GC")
+    {
+      state <- sample(x=c("AT","GC"),size=1,prob=TM[2,])
+      nuc <- sample(x=c("A","C","G","T"),size=1,prob=GC_EM)
+    }
+    nuc_seq <- c(nuc_seq,nuc)
+  }
+  return(nuc_seq)
+}
+
+GenerateNucSeq(100)
+```
+
+###D
+
+```{r}
+GenerateStateSeq <- function(nuc_seq)
+{
+  for(i in 1:length(nuc_seq))
+  {
+      
+  }
+}
+
+nuc_seq <- c("A", "A", "G", "C", "G", "T", "G", "G", "G", "G", "C", "C", "C", "C", "G", "G", "C", "G", "A", "C", "A", "T", "G", "G", "G", "G", "T", "G", "T", "C")
+```
