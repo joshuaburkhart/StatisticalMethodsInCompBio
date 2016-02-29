@@ -39,16 +39,16 @@ set.seed(1234)
 > Transition matrix for two-state model:  
 
 ```{r}
-AT = c(.80,.15)
-GC = c(.20,.85)
+AT = c(.85,.20)
+GC = c(.15,.80)
 df = data.frame(AT,GC)
 row.names(df) <- c("AT","GC")
 kable(df,row.names=TRUE)
 ```
 
 ```{r}
-TM <- matrix(c(.8, .2,
-               .15,.85),ncol=2,byrow=TRUE)
+TM <- matrix(c(.85, .15,
+               .20,.80),ncol=2,byrow=TRUE)
 ```
 
 ###1B
@@ -58,17 +58,17 @@ TM <- matrix(c(.8, .2,
 > Emission matrix for AT-rich regions:  
 
 ```{r}
-P = c(.3,.1,.2,.4)
+P = c(.30,.10,.20,.40)
 df = data.frame(P)
 row.names(df) <- c("A","C","G","T")
 kable(df,row.names=TRUE)
 ```
 
 ```{r}
-AT_EM <- matrix(c(.3,
-                  .1,
-                  .2,
-                  .4),ncol=1,byrow=TRUE)
+AT_EM <- matrix(c(.30,
+                  .10,
+                  .20,
+                  .40),ncol=1,byrow=TRUE)
 ```
 
 ####1Bii
@@ -84,9 +84,9 @@ kable(df,row.names=TRUE)
 
 ```{r}
 GC_EM <- matrix(c(.05,
-                  .3,
+                  .30,
                   .55,
-                  .1),ncol=1,byrow=TRUE)
+                  .10),ncol=1,byrow=TRUE)
 ```
 
 ###1C
@@ -133,34 +133,33 @@ GC_DICT <- list(A=.05,
 
 GenerateStateSeq <- function(nuc_seq)
 {
-  at_state_prob <- AT_DICT[[nuc_seq[1]]] # P(nuc_seq[1]|AT)
-  gc_state_prob <- GC_DICT[[nuc_seq[1]]] # P(nuc_seq[1]|GC)
-
-  at_state_trace <- sample(x=c("AT","GC"),size=1)
-  gc_state_trace <- sample(x=c("AT","GC"),size=1)
+  at_state_prob <- 0.5 * AT_DICT[[nuc_seq[1]]] # P(nuc_seq[1]|AT)
+  gc_state_prob <- 0.5 * GC_DICT[[nuc_seq[1]]] # P(nuc_seq[1]|GC)
   
   for(i in 2:length(nuc_seq))
   {
     # AT
-    at_state_prob <- c(at_state_prob,max(
-      at_state_prob[i-1] * TM[1,1] * AT_DICT[[nuc_seq[i]]], # P(AT|AT) * P(qi|AT)
-      gc_state_prob[i-1] * TM[1,2] * GC_DICT[[nuc_seq[i]]])) # P(GC|AT) * P(qi|GC)
-    
-    at_state_trace <- c(at_state_trace,if(at_state_prob[i-1] * TM[1,1] >
-                                          gc_state_prob[i-1] * TM[1,2]) "AT" else "GC")
-    
+    at_state_prob <- c(at_state_prob,
+                           # P(AT) * P(AT|AT) * P(qi|AT)
+                       max(at_state_prob[i-1] * TM[1,1] * AT_DICT[[nuc_seq[i]]],
+                           # P(GC) * P(AT|GC) * P(qi|AT)
+                           gc_state_prob[i-1] * TM[2,1] * AT_DICT[[nuc_seq[i]]])) 
     # GC
-    gc_state_prob <- c(gc_state_prob,max(
-      gc_state_prob[i-1] * TM[2,2] * GC_DICT[[nuc_seq[i]]], # P(GC|GC) * P(qi|GC)
-      at_state_prob[i-1] * TM[2,1] * AT_DICT[[nuc_seq[i]]])) # P(AT|GC) * P(qi|AT)
-    
-    gc_state_trace <- c(gc_state_trace,if(gc_state_prob[i-1] * TM[2,2] >
-                                          at_state_prob[i-1] * TM[2,1]) "GC" else "AT")
+    gc_state_prob <- c(gc_state_prob, 
+                           # P(GC) * P(GC|GC) * P(qi|GC)
+                       max(gc_state_prob[i-1] * TM[2,2] * GC_DICT[[nuc_seq[i]]],
+                           # P(AT) * P(GC|AT) * P(qi|GC)
+                           at_state_prob[i-1] * TM[1,2] * GC_DICT[[nuc_seq[i]]]))
   }
-  return(if(prod(at_state_prob) > prod(gc_state_prob))
-            at_state_trace else gc_state_trace)
+  state_trace <- character()
+  for(j in 1:length(nuc_seq))
+  {
+    state_trace <- c(state_trace,ifelse(at_state_prob[j] > gc_state_prob[j],"AT","GC"))
+  }
+  return(state_trace)
 }
 
-GenerateStateSeq(c("A", "A", "G", "C", "G", "T", "G", "G", "G", "G", "C", "C", "C", "C", "G",
-                   "G", "C", "G", "A", "C", "A", "T", "G", "G", "G", "G", "T", "G", "T", "C"))
+GenerateStateSeq(c("A", "A", "G", "C", "G", "T", "G", "G", "G", "G",
+                   "C", "C", "C", "C", "G", "G", "C", "G", "A", "C",
+                   "A", "T", "G", "G", "G", "G", "T", "G", "T", "C"))
 ```
